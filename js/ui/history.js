@@ -71,7 +71,7 @@
     '</div>';
   }
 
-  function winRate(r) { return r.played > 0 ? Math.round((r.wins / r.played) * 100) : 0; }
+  function winRate(r) { const t = r.wins + r.losses; return t > 0 ? Math.round((r.wins / t) * 100) : 0; }
 
   function recordDetail(h) {
     let html = "";
@@ -83,12 +83,13 @@
           const medal = r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : r.rank === 3 ? "🥉" : r.rank;
           const d = (r.diff > 0 ? "+" : "") + r.diff;
           return '<tr><td class="rank-cell">' + medal + '</td><td class="name-cell">' +
-            esc(h.names[r.id] || "?") + '</td><td>' + r.played + '</td><td class="win-cell">' +
-            r.wins + '</td><td>' + r.losses + '</td><td class="rate-cell">' + winRate(r) + '%</td><td class="' +
+            esc(h.names[r.id] || "?") + '</td><td>' + r.played + '</td>' +
+            '<td class="wdl-cell"><b>' + r.wins + '</b>·' + r.draws + '·' + r.losses + '</td>' +
+            '<td class="rate-cell">' + winRate(r) + '%</td><td class="' +
             (r.diff > 0 ? "pos" : r.diff < 0 ? "neg" : "") + '">' + d + '</td></tr>';
         }).join("");
-        html += '<div class="hist-sub">📊 순위 (승·패·승률)</div>' +
-          '<table class="rank-table compact"><thead><tr><th>#</th><th>이름</th><th>경기</th><th>승</th><th>패</th><th>승률</th><th>득실</th></tr></thead><tbody>' + trs + '</tbody></table>';
+        html += '<div class="hist-sub">📊 순위 (승·무·패·승률)</div>' +
+          '<table class="rank-table compact"><thead><tr><th>#</th><th>이름</th><th>경기</th><th>승·무·패</th><th>승률</th><th>득실</th></tr></thead><tbody>' + trs + '</tbody></table>';
       }
     }
     // 라운드별 대진 (과거 대진)

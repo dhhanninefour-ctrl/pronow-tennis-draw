@@ -463,6 +463,9 @@ html, body {
 .rank-table .name-cell { text-align: left; font-weight: 800; letter-spacing: -0.02em; }
 .rank-table .name-cell .badge { font-size: 10px; padding: 2px 6px; margin-left: 4px; }
 .rank-table .win-cell { color: var(--win); }
+.rank-table .wdl-cell { white-space: nowrap; font-weight: 700; }
+.rank-table .wdl-cell b { color: var(--win); }
+.score-guide { background: #f1f5ff; border-radius: 8px; padding: 8px 12px; margin: 0 0 12px; }
 .rank-table .rate-cell { color: var(--ink); font-weight: 800; }
 .rank-table td.pos { color: var(--win); }
 .rank-table td.neg { color: var(--danger); }

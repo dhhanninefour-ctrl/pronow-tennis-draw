@@ -32,8 +32,10 @@
     const s = (d > 0 ? "+" : "") + d;
     return '<td class="' + (d > 0 ? "pos" : d < 0 ? "neg" : "") + '">' + s + '</td>';
   }
-  function winRate(r) { return r.played > 0 ? Math.round((r.wins / r.played) * 100) : 0; }
+  // 승률은 무승부 제외: 승 / (승+패)
+  function winRate(r) { const t = r.wins + r.losses; return t > 0 ? Math.round((r.wins / t) * 100) : 0; }
   function rateCell(r) { return '<td class="rate-cell">' + winRate(r) + '%</td>'; }
+  function wdlCell(r) { return '<td class="wdl-cell"><b>' + r.wins + '</b>·' + r.draws + '·' + r.losses + '</td>'; }
 
   function render(container) {
     if (!S.get().session.scoring) {
@@ -82,15 +84,14 @@
         '<td class="name-cell">' + esc(nameOf(r.id)) +
           (isGuest(r.id) ? ' <span class="badge badge-guest">G</span>' : '') + '</td>' +
         '<td>' + r.played + '</td>' +
-        '<td class="win-cell">' + r.wins + '</td>' +
-        '<td>' + r.losses + '</td>' +
+        wdlCell(r) +
         rateCell(r) +
         diffCell(r.diff) +
       '</tr>';
     }).join("");
-    return '<p class="sub muted">입력 ' + prog.done + ' / ' + prog.total + ' 경기 · 승 → 득실차 순</p>' +
+    return '<p class="sub muted">입력 ' + prog.done + ' / ' + prog.total + ' 경기 · 승 → 득실차 순 (승·무·패)</p>' +
       '<table class="rank-table">' +
-        '<thead><tr><th>#</th><th>이름</th><th>경기</th><th>승</th><th>패</th><th>승률</th><th>득실</th></tr></thead>' +
+        '<thead><tr><th>#</th><th>이름</th><th>경기</th><th>승·무·패</th><th>승률</th><th>득실</th></tr></thead>' +
         '<tbody>' + trs + '</tbody></table>';
   }
 
@@ -108,15 +109,14 @@
         '<td class="name-cell">' + esc(r.name) + '</td>' +
         '<td>' + r.sessions + '</td>' +
         '<td>' + r.played + '</td>' +
-        '<td class="win-cell">' + r.wins + '</td>' +
-        '<td>' + r.losses + '</td>' +
+        wdlCell(r) +
         rateCell(r) +
         diffCell(r.diff) +
       '</tr>';
     }).join("");
-    return '<p class="sub muted">저장된 모임 ' + savedCount + '회 + 진행 중 · 승 → 득실차 순</p>' +
+    return '<p class="sub muted">저장된 모임 ' + savedCount + '회 + 진행 중 · 승 → 득실차 순 (승·무·패)</p>' +
       '<table class="rank-table">' +
-        '<thead><tr><th>#</th><th>이름</th><th>모임</th><th>경기</th><th>승</th><th>패</th><th>승률</th><th>득실</th></tr></thead>' +
+        '<thead><tr><th>#</th><th>이름</th><th>모임</th><th>경기</th><th>승·무·패</th><th>승률</th><th>득실</th></tr></thead>' +
         '<tbody>' + trs + '</tbody></table>';
   }
 

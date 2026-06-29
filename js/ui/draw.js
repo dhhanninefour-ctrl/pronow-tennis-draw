@@ -93,6 +93,7 @@
           regenBtn +
         '</div>' +
         drawTools() +
+        scoreGuide(scoring) +
         memberScoreHint(scoring) +
         warnHtml +
         roundsHtml +
@@ -108,6 +109,12 @@
     return UI.memberId
       ? '<p class="muted small score-hint">✏️ 본인이 참여한 경기의 점수를 직접 입력할 수 있어요. (승률에 반영)</p>'
       : '<p class="muted small score-hint">🔒 점수를 입력하려면 우측 상단 👤에서 로그인하세요.</p>';
+  }
+
+  // 점수 기록 기준 안내 (1세트)
+  function scoreGuide(scoring) {
+    if (!scoring) return "";
+    return '<p class="muted small score-guide">🎾 기록 기준(1세트): <b>5:5 무승부</b> · 5:5 타이브레이크 승리는 <b>6:5</b> · 6:6 타이브레이크는 <b>7:6</b></p>';
   }
 
   // 관리자 전용: 대진 양식 다운로드/업로드
