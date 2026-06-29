@@ -57,7 +57,7 @@
           '<button id="excel-down" class="btn btn-ghost">⬇️ 엑셀 다운로드</button>' +
           '<button id="excel-up" class="btn btn-ghost">⬆️ 엑셀 업로드</button>' +
         '</div>' +
-        '<p class="muted small excel-hint">엑셀 컬럼: <b>이름</b> · <b>구분</b>(정기/게스트) · <b>NTRP</b>(1.0~7.0). NTRP는 대진 실력 균형에 반영됩니다.</p>' +
+        '<p class="muted small excel-hint">엑셀 컬럼: <b>이름</b> · <b>아이디</b> · <b>비밀번호</b> · <b>구분</b>(정기/게스트) · <b>NTRP</b>(1.0~7.0) · <b>이메일</b>. 관리자가 임시 아이디/비밀번호를 만들어 올리면 회원이 로그인 후 직접 바꿀 수 있어요.</p>' +
         (UI.ntrpGuideHtml ? UI.ntrpGuideHtml() : "") +
 
         pendingSection(pending) +
@@ -147,7 +147,14 @@
           let added = 0, skipped = 0;
           rows.forEach(function (r) {
             if (existing[r.name]) { skipped++; return; }
-            S.addMember(r.name, r.type, r.ntrp, club);
+            const mm = S.addMember(r.name, r.type, r.ntrp, club);
+            if (mm && (r.loginId || r.loginPw || r.email)) {
+              S.updateMember(mm.id, {
+                loginId: (r.loginId || "").trim(),
+                loginPw: (r.loginPw || "").trim(),
+                email: (r.email || "").trim().toLowerCase()
+              });
+            }
             existing[r.name] = true; added++;
           });
           upBtn.disabled = false; upBtn.textContent = "⬆️ 엑셀 업로드";

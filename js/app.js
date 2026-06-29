@@ -388,6 +388,12 @@
         '<h3>내 계정</h3>' +
         '<p class="muted">로그인됨: <b>' + esc(m ? m.name : "") + '</b>' +
           (m && typeof m.ntrp === "number" ? ' · NTRP ' + m.ntrp.toFixed(1) : '') + '</p>' +
+        '<label class="share-label">아이디 변경</label>' +
+        '<div class="share-box"><input id="acc-newid" type="text" autocomplete="off" value="' + esc(m ? (m.loginId || "") : "") + '" /></div>' +
+        '<p class="warn" id="acc-idwarn" hidden></p>' +
+        '<p class="ok-msg" id="acc-idok" hidden>✅ 아이디가 변경되었습니다.</p>' +
+        '<button id="acc-chid" class="btn btn-ghost">아이디 변경</button>' +
+        '<hr class="modal-hr" />' +
         '<label class="share-label">비밀번호 변경</label>' +
         '<div class="share-box"><input id="acc-curpw" type="password" placeholder="현재 비밀번호" autocomplete="off" /></div>' +
         '<div class="share-box"><input id="acc-newpw" type="password" placeholder="새 비밀번호" autocomplete="off" /></div>' +
@@ -500,6 +506,21 @@
       S.setMemberPassword(memberAuthId, nw);
       if (Sync.getMode() === "cloud") Sync.memberPush();
       root.querySelector("#acc-curpw").value = ""; root.querySelector("#acc-newpw").value = "";
+      okm.hidden = false;
+    });
+
+    const chidBtn = root.querySelector("#acc-chid");
+    if (chidBtn) chidBtn.addEventListener("click", function () {
+      const nid = (root.querySelector("#acc-newid").value || "").trim();
+      const w = root.querySelector("#acc-idwarn"); const okm = root.querySelector("#acc-idok");
+      okm.hidden = true;
+      if (!nid) { w.textContent = "아이디를 입력하세요."; w.hidden = false; return; }
+      if (S.activeMembers().some(function (x) { return x.id !== memberAuthId && x.loginId === nid; })) {
+        w.textContent = "이미 사용 중인 아이디입니다."; w.hidden = false; return;
+      }
+      w.hidden = true;
+      S.updateMember(memberAuthId, { loginId: nid });
+      if (Sync.getMode() === "cloud") Sync.memberPush();
       okm.hidden = false;
     });
 
