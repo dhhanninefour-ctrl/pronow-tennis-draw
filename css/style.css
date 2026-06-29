@@ -535,6 +535,7 @@ html, body {
 .excel-row { display: flex; gap: 8px; margin: 6px 0 4px; }
 .excel-row .btn { flex: 1; }
 .excel-hint { margin: 2px 2px 6px; }
+.score-hint { background: #fbffe9; border-radius: 8px; padding: 8px 12px; margin: 0 0 14px; }
 .pending-box { background: #fffdf0; border: 1px solid #f0e6b8; border-radius: var(--radius); padding: 12px 14px; margin-top: 18px; }
 .pending-box h3 { margin-top: 4px; }
 .member-card.pending { background: #fff; }

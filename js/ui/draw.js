@@ -93,12 +93,21 @@
           regenBtn +
         '</div>' +
         drawTools() +
+        memberScoreHint(scoring) +
         warnHtml +
         roundsHtml +
         statsBlock(gen.stats) +
       '</div>';
 
     bind(container);
+  }
+
+  // 회원용 점수 입력 안내
+  function memberScoreHint(scoring) {
+    if (!UI.readonly || !scoring) return "";
+    return UI.memberId
+      ? '<p class="muted small score-hint">✏️ 본인이 참여한 경기의 점수를 직접 입력할 수 있어요. (승률에 반영)</p>'
+      : '<p class="muted small score-hint">🔒 점수를 입력하려면 우측 상단 👤에서 로그인하세요.</p>';
   }
 
   // 관리자 전용: 대진 양식 다운로드/업로드
@@ -111,8 +120,16 @@
       '<p class="muted small excel-hint">엑셀로 대진·점수를 직접 입력할 수 있어요. 컬럼: <b>라운드·코트·A팀·B팀·A점수·B점수·휴식</b> (복식은 이름을 · 로 구분)</p>';
   }
 
+  // 점수 입력 가능 여부: 관리자 전체, 회원은 본인이 참여한 경기만
+  function canEditScore(m) {
+    if (!UI.readonly) return true;
+    if (!UI.memberId) return false;
+    return (m.teamA && m.teamA.indexOf(UI.memberId) >= 0) ||
+           (m.teamB && m.teamB.indexOf(UI.memberId) >= 0);
+  }
+
   function matchCard(roundNo, idx, m, scoring) {
-    const dis = UI.readonly ? " disabled" : "";
+    const dis = canEditScore(m) ? "" : " disabled";
     const scoreHtml = scoring
       ? '<div class="score-row">' +
           '<input class="score-in" type="number" inputmode="numeric" min="0" max="99"' + dis + ' ' +
@@ -281,6 +298,10 @@
         if (!m) return;
         if (side === "A") m.scoreA = val; else m.scoreB = val;
         S.commit();
+        // 회원이 입력하면 클라우드에 반영
+        if (UI.memberId && global.TennisSync && global.TennisSync.getMode() === "cloud") {
+          global.TennisSync.memberPush();
+        }
       });
     });
   }
