@@ -10,6 +10,47 @@
 
   let viewDate = null;   // 보고 있는 날짜(null=현재 대진 기본)
   let curNames = null;   // 지난 기록을 볼 때의 이름맵(null=현재 회원으로 해석)
+  let editMode = false;  // 대진 수기 수정 모드(탭-스왑)
+  let selectedLoc = null; // 첫 번째로 고른 선수 위치
+  let undoStack = [];    // 직전 대진 스냅샷(되돌리기)
+
+  // 수정 권한: 관리자 또는 대진 생성 권한 회원
+  function canEditDraw() {
+    return (!UI.readonly) || !!(UI.memberId && S.canGenerateDraw(UI.memberId));
+  }
+  function editorName() {
+    if (!UI.readonly) return "관리자";
+    const m = UI.memberId ? S.getMember(UI.memberId) : null;
+    return m ? m.name : "회원";
+  }
+  function pushDraw() {
+    if (global.TennisSync && global.TennisSync.getMode && global.TennisSync.getMode() === "cloud") {
+      global.TennisSync.memberPush();
+    }
+  }
+  // 위치 인코딩: "r.t.mi.side.pos"(팀) / "r.b.0.X.pos"(휴식)
+  function parseLoc(s) { const p = String(s).split("."); return { r: +p[0], kind: p[1], mi: +p[2], side: p[3], pos: +p[4] }; }
+  function getSlot(gen, L) {
+    const rd = gen.rounds[L.r]; if (!rd) return null;
+    if (L.kind === "b") return rd.byes ? rd.byes[L.pos] : null;
+    const m = rd.matches[L.mi]; if (!m) return null;
+    return (L.side === "A" ? m.teamA : m.teamB)[L.pos];
+  }
+  function setSlot(gen, L, id) {
+    const rd = gen.rounds[L.r]; if (!rd) return;
+    if (L.kind === "b") { rd.byes[L.pos] = id; return; }
+    const m = rd.matches[L.mi]; if (!m) return;
+    (L.side === "A" ? m.teamA : m.teamB)[L.pos] = id;
+  }
+  function playerChip(id, loc) {
+    return '<span class="pl-chip' + (loc === selectedLoc ? " sel" : "") + '" data-act="swap" data-loc="' + loc + '">' + esc(nameOf(id)) + '</span>';
+  }
+  function teamChips(ids, r, mi, side) {
+    return (ids || []).map(function (id, pos) { return playerChip(id, r + ".t." + mi + "." + side + "." + pos); }).join("");
+  }
+  function byeChips(ids, r) {
+    return (ids || []).map(function (id, pos) { return playerChip(id, r + ".b.0.X." + pos); }).join("");
+  }
 
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -107,12 +148,15 @@
     const warnHtml = editable && gen.warnings && gen.warnings.length
       ? '<p class="warn">' + gen.warnings.map(esc).join("<br>") + '</p>' : "";
 
-    const roundsHtml = gen.rounds.map(function (rd) {
+    const canEdit = editable && canEditDraw();
+    const editing = canEdit && editMode;
+
+    const roundsHtml = gen.rounds.map(function (rd, rIdx) {
       const matchesHtml = rd.matches.map(function (m, idx) {
-        return matchCard(rd.roundNo, idx, m, scoring, editable);
+        return matchCard(rd.roundNo, idx, m, scoring, editable, editing, rIdx);
       }).join("");
       const byeHtml = rd.byes && rd.byes.length
-        ? '<div class="bye-row">휴식 · ' + names(rd.byes) + '</div>' : "";
+        ? '<div class="bye-row">휴식 · ' + (editing ? byeChips(rd.byes, rIdx) : names(rd.byes)) + '</div>' : "";
       return '<div class="round-block">' +
         '<div class="round-title">ROUND ' + rd.roundNo + '</div>' +
         '<div class="court-grid">' + matchesHtml + '</div>' +
@@ -120,22 +164,33 @@
       '</div>';
     }).join("");
 
-    const regenBtn = (editable && !UI.readonly) ? '<button id="regen-btn" class="btn btn-ghost">🔄 다시 생성</button>' : "";
+    const regenBtn = (editable && !UI.readonly && !editMode) ? '<button id="regen-btn" class="btn btn-ghost">🔄 다시 생성</button>' : "";
+    const editToggle = canEdit
+      ? '<button id="draw-edit-toggle" class="btn ' + (editMode ? "btn-primary" : "btn-ghost") + '">' + (editMode ? "✓ 수정 완료" : "✏️ 수정") + '</button>'
+      : "";
     const pastBadge = editable ? "" : ' <span class="badge badge-regular">지난 기록</span>';
+    const editBar = editing
+      ? '<div class="edit-bar"><p class="muted small">바꿀 두 선수를 차례로 누르면 자리가 교체됩니다. (실시간 공유)</p>' +
+          (undoStack.length ? '<button id="draw-undo" class="btn btn-ghost btn-sm">↩ 되돌리기</button>' : "") +
+        '</div>'
+      : "";
+    const editorLabel = (gen._editor ? '<p class="muted small">✏️ 최근 수정: ' + esc(gen._editor) + '</p>' : "");
     container.innerHTML =
       '<div class="screen">' +
         '<div class="screen-head row-between">' +
           '<h2>대진 <span class="muted small">' + (sel.mode === "singles" ? "단식" : "복식") +
             ' · ' + gen.rounds.length + '라운드</span>' + pastBadge + '</h2>' +
-          regenBtn +
+          '<span class="head-btns">' + editToggle + regenBtn + '</span>' +
         '</div>' +
         dateBar() +
-        drawTools() +
+        (editMode ? "" : drawTools()) +
+        editBar +
         scoreGuide(scoring) +
-        (editable ? memberScoreHint(scoring) : "") +
+        (editable && !editing ? memberScoreHint(scoring) : "") +
+        editorLabel +
         warnHtml +
         roundsHtml +
-        statsBlock(gen.stats) +
+        (editing ? "" : statsBlock(gen.stats)) +
       '</div>';
 
     bind(container);
@@ -200,8 +255,17 @@
            (m.teamB && m.teamB.indexOf(UI.memberId) >= 0);
   }
 
-  function matchCard(roundNo, idx, m, scoring, editable) {
+  function matchCard(roundNo, idx, m, scoring, editable, editing, rIdx) {
     let scoreHtml = "";
+    if (editing) {
+      // 수정 모드: 선수 칩으로 표시(점수칸 숨김)
+      return '<div class="court-card">' +
+        '<div class="court-no">코트 ' + m.court + '</div>' +
+        '<div class="team team-edit">' + teamChips(m.teamA, rIdx, idx, "A") + '</div>' +
+        '<div class="vs">VS</div>' +
+        '<div class="team team-edit">' + teamChips(m.teamB, rIdx, idx, "B") + '</div>' +
+      '</div>';
+    }
     if (scoring && editable) {
       const dis = canEditScore(m) ? "" : " disabled";
       scoreHtml = '<div class="score-row">' +
@@ -405,6 +469,21 @@
     });
   }
 
+  function doSwap(locA, locB, container) {
+    const gen = S.get().session.generated;
+    if (!gen || !gen.rounds) return;
+    undoStack.push(JSON.parse(JSON.stringify(gen)));
+    if (undoStack.length > 30) undoStack.shift();
+    const A = parseLoc(locA), B = parseLoc(locB);
+    const ida = getSlot(gen, A), idb = getSlot(gen, B);
+    setSlot(gen, A, idb); setSlot(gen, B, ida);
+    gen._editor = editorName();
+    selectedLoc = null;
+    S.setGenerated(gen);
+    pushDraw();
+    render(container);
+  }
+
   function bind(container) {
     bindDrawTools(container);
     const vd = container.querySelector("#view-date");
@@ -413,6 +492,29 @@
     if (dd) dd.addEventListener("change", function () { S.setSessionConfig({ date: dd.value }); });
     const regen = container.querySelector("#regen-btn");
     if (regen) regen.addEventListener("click", function () { generateAndGo(true); });
+
+    // 대진 수정 모드 토글
+    const editToggle = container.querySelector("#draw-edit-toggle");
+    if (editToggle) editToggle.addEventListener("click", function () {
+      editMode = !editMode; selectedLoc = null; if (!editMode) undoStack = [];
+      render(container);
+    });
+    // 되돌리기
+    const undo = container.querySelector("#draw-undo");
+    if (undo) undo.addEventListener("click", function () {
+      if (!undoStack.length) return;
+      const prev = undoStack.pop();
+      S.setGenerated(prev); pushDraw(); selectedLoc = null; render(container);
+    });
+    // 선수 칩 탭 → 두 번째 탭 시 자리 교체
+    container.querySelectorAll('[data-act="swap"]').forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        const loc = chip.getAttribute("data-loc");
+        if (!selectedLoc) { selectedLoc = loc; render(container); return; }
+        if (selectedLoc === loc) { selectedLoc = null; render(container); return; }
+        doSwap(selectedLoc, loc, container);
+      });
+    });
 
     container.querySelectorAll(".score-in").forEach(function (inp) {
       inp.addEventListener("change", function () {

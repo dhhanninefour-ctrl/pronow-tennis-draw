@@ -314,6 +314,17 @@ html, body {
   background: var(--surface-2); outline: none;
 }
 .tree-search:focus { border-color: var(--ink-soft); }
+
+/* 대진 수기 수정(탭-스왑) */
+.head-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.edit-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+.team-edit { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.pl-chip {
+  display: inline-block; padding: 8px 12px; border-radius: 10px;
+  background: var(--surface-2); border: 1.5px solid var(--line-strong);
+  cursor: pointer; font-weight: 800; font-size: 15px; color: var(--ink); user-select: none;
+}
+.pl-chip.sel { background: var(--accent); border-color: var(--accent); }
 .add-row input[type="text"]:focus { border-color: var(--ink); background: #fff; }
 .type-select {
   font-family: inherit;
