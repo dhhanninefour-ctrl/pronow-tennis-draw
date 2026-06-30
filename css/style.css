@@ -365,6 +365,23 @@ html, body {
 .attendees .time-in { font-size: 13px; padding: 4px 6px; }
 .attendees .btn-tiny { font-size: 11px; padding: 4px 8px; }
 .attendees .stay-badge { font-size: 11px; padding: 3px 8px; }
+/* 참석 명단 칩 */
+.attendees .present-summary {
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 9px 12px; margin: 0 0 12px;
+}
+.attendees .present-summary.empty-sum { background: var(--surface); }
+.attendees .ps-head { font-size: 12.5px; font-weight: 800; color: var(--ink-soft); margin-bottom: 7px; display: flex; align-items: center; gap: 6px; }
+.attendees .ps-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.attendees .ps-chip { font-size: 13px; font-weight: 700; background: #fbffe9; border: 1px solid var(--accent-deep); color: var(--ink); border-radius: 999px; padding: 3px 11px; }
+.attendees .ps-chip.guest { background: #eef1ff; border-color: #c3cbf5; color: #4250c8; }
+.attendees .ps-tag { font-size: 9px; font-weight: 800; opacity: .65; }
+/* 게스트 신청 폼 컴팩트 (이름/성별/NTRP/구력 한 줄) */
+.attendees .guest-form input[type="text"].g-name-in { flex: 1 1 96px; min-width: 84px; font-size: 14px; padding: 8px 10px; }
+.attendees .guest-form .type-select { flex: 0 0 auto; min-width: 0; font-size: 13px; padding: 8px; }
+.attendees .guest-form .num-narrow { flex: 0 0 62px; width: 62px; }
+.attendees .guest-form .btn { padding: 8px 14px; }
+.attendees #g-search { margin: 10px 0 8px; }
 
 /* 게스트 날짜별 그룹 (회원 관리) */
 .guest-date-group { margin-bottom: 10px; }

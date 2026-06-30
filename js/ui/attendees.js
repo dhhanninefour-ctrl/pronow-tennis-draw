@@ -13,6 +13,7 @@
   const CLUB_LABEL = { sat: "토요일", sun: "일요일", both: "토·일" };
   // 트리 펼침 상태(기본 펼침) — 회원 / 게스트
   const treeOpen = { member: true, guest: true };
+  let guestQuery = ""; // 게스트 이름 검색어(재렌더 후 유지)
 
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -69,10 +70,11 @@
     '</li>';
   }
 
-  // 게스트 = 댓글 카드 (✅ 토글 + 메타 + ✕ 삭제). 출석 시 출퇴근 시간 표시.
+  // 게스트 = 체크 카드 (✅ 토글 + 메타 + ✕ 삭제). 출석 시 출퇴근 시간 표시.
   function guestComment(m, present) {
     const meta = [m.gender === "F" ? "여" : m.gender === "M" ? "남" : "", skillText(m)].filter(Boolean).join(" · ");
-    return '<li class="guest-comment ' + (present ? "on" : "") + '" data-id="' + m.id + '">' +
+    return '<li class="guest-comment ' + (present ? "on" : "") + '" data-id="' + m.id + '"' +
+        ' data-name="' + esc(String(m.name || "").toLowerCase()) + '" data-present="' + (present ? "1" : "0") + '">' +
       '<div class="gc-row">' +
         '<span class="gc-check" data-act="vote" data-id="' + m.id + '">' + (present ? "✅" : "⬜") + '</span>' +
         '<div class="gc-body">' +
@@ -83,6 +85,44 @@
       '</div>' +
       (present ? timeControls(m.id) : "") +
     '</li>';
+  }
+
+  // 참석 체크한 사람들(회원+게스트) 요약 칩
+  function presentSummary(present) {
+    if (!present.length) {
+      return '<div class="present-summary empty-sum"><span class="muted small">아직 참석 체크한 사람이 없어요. 아래에서 본인 이름을 눌러 ✅ 표시하세요.</span></div>';
+    }
+    const chips = present.map(function (m) {
+      const g = m.type === "guest";
+      return '<span class="ps-chip' + (g ? " guest" : "") + '">' + esc(m.name) + (g ? ' <span class="ps-tag">G</span>' : "") + '</span>';
+    }).join("");
+    return '<div class="present-summary">' +
+      '<div class="ps-head">✅ 참석 명단 <span class="count-pill accent">' + present.length + '</span></div>' +
+      '<div class="ps-chips">' + chips + '</div>' +
+    '</div>';
+  }
+
+  // 게스트 목록 필터: 검색어 있으면 이름 매칭, 없으면 '참석 체크된' 게스트만 표시 (누계 X)
+  function applyGuestFilter(container) {
+    const inp = container.querySelector("#g-search");
+    const q = inp ? inp.value.trim().toLowerCase() : "";
+    const list = container.querySelector(".guest-comments");
+    if (!list) return;
+    let shown = 0;
+    list.querySelectorAll(".guest-comment").forEach(function (li) {
+      const name = li.getAttribute("data-name") || "";
+      const present = li.getAttribute("data-present") === "1";
+      const match = q ? name.indexOf(q) >= 0 : present;
+      li.style.display = match ? "" : "none";
+      if (match) shown++;
+    });
+    const hint = container.querySelector("#guest-empty-hint");
+    if (hint) {
+      hint.style.display = shown ? "none" : "";
+      hint.textContent = q
+        ? "'" + inp.value.trim() + "' 게스트가 없어요. 위 ‘게스트 신청’으로 추가하세요."
+        : "참석 체크된 게스트가 없어요. 이름을 검색하거나 위에서 신청하세요.";
+    }
   }
 
   function ntrpOptions() {
@@ -116,6 +156,8 @@
             ' (실시간 공유)</p>' +
         '</div>' +
 
+        presentSummary(present) +
+
         '<div class="member-section tree' + (treeOpen.member ? "" : " collapsed") + '" data-tree-sec="member">' +
           '<h3 class="tree-head" data-act="tree-toggle" data-tree="member">' +
             '<span class="tree-caret">' + (treeOpen.member ? "▼" : "▶") + '</span> 회원 ' +
@@ -127,23 +169,23 @@
           '</div>' +
         '</div>' +
 
-        // ── 게스트 (투표 밑, 댓글형 입력) ──
+        // ── 게스트 신청 (이름 검색 → 체크 / 신규 신청) ──
         '<div class="member-section guest-zone tree' + (treeOpen.guest ? "" : " collapsed") + '" data-tree-sec="guest">' +
           '<h3 class="tree-head" data-act="tree-toggle" data-tree="guest">' +
-            '<span class="tree-caret">' + (treeOpen.guest ? "▼" : "▶") + '</span> 게스트 직접 추가 ' +
-            '<span class="count-pill pill-guest">' + guests.length + '</span></h3>' +
+            '<span class="tree-caret">' + (treeOpen.guest ? "▼" : "▶") + '</span> 게스트 신청 ' +
+            '<span class="count-pill pill-guest">' + guests.filter(function (m) { return !!att[m.id]; }).length + '</span></h3>' +
           '<div class="tree-body">' +
           '<form class="add-row guest-form" id="guest-form">' +
-            '<input type="text" id="g-name" placeholder="게스트 이름을 적어 추가하세요" autocomplete="off" maxlength="20" />' +
+            '<input type="text" id="g-name" class="g-name-in" placeholder="이름" autocomplete="off" maxlength="20" />' +
             '<select id="g-gender" class="type-select"><option value="">성별</option><option value="M">남</option><option value="F">여</option></select>' +
             '<select id="g-ntrp" class="type-select">' + ntrpOptions() + '</select>' +
-            '<input type="number" id="g-years" class="type-select num-narrow" placeholder="구력(년)" min="0" max="60" />' +
-            '<button type="submit" class="btn btn-primary">+ 추가</button>' +
+            '<input type="number" id="g-years" class="type-select num-narrow" placeholder="구력" min="0" max="60" />' +
+            '<button type="submit" class="btn btn-primary">신청</button>' +
           '</form>' +
-          '<p class="muted small">NTRP를 모르면 <b>구력(년)</b>만 입력해도 대진 실력 배분에 반영됩니다.</p>' +
-          (guests.length
-            ? '<ul class="guest-comments">' + guests.map(function (m) { return guestComment(m, !!att[m.id]); }).join("") + '</ul>'
-            : '<p class="empty">아직 게스트가 없습니다. 위에 이름을 적어 추가하세요.</p>') +
+          '<p class="muted small">NTRP를 모르면 <b>구력(년)</b>만 입력해도 대진 실력 배분에 반영됩니다. 이미 신청한 이름이면 자동으로 참석 체크돼요.</p>' +
+          '<input type="text" id="g-search" class="tree-search" placeholder="🔍 이름 검색 — 신청한 게스트 찾아 체크" value="' + esc(guestQuery) + '" />' +
+          '<ul class="guest-comments">' + guests.map(function (m) { return guestComment(m, !!att[m.id]); }).join("") + '</ul>' +
+          '<p class="empty" id="guest-empty-hint">참석 체크된 게스트가 없어요. 이름을 검색하거나 위에서 신청하세요.</p>' +
           '</div>' +
         '</div>' +
 
@@ -233,17 +275,36 @@
         }
       });
     });
-    // 게스트 추가
+    // 게스트 이름 검색 (재렌더 없이 DOM 필터)
+    const gs = container.querySelector("#g-search");
+    if (gs) {
+      gs.addEventListener("click", function (e) { e.stopPropagation(); });
+      gs.addEventListener("input", function () { guestQuery = gs.value; applyGuestFilter(container); });
+    }
+    // 초기 필터: 기본은 참석 체크된 게스트만, 검색어 있으면 매칭
+    applyGuestFilter(container);
+
+    // 게스트 신청 (같은 이름이 이미 있으면 새로 만들지 않고 참석 체크)
     const form = container.querySelector("#guest-form");
     if (form) form.addEventListener("submit", function (e) {
       e.preventDefault();
       const name = (container.querySelector("#g-name").value || "").trim();
       if (!name) return;
-      const gender = container.querySelector("#g-gender").value;
-      const ntrp = container.querySelector("#g-ntrp").value;
-      const years = container.querySelector("#g-years").value;
-      const m = S.addMember(name, "guest", ntrp, S.getActiveClub(), { gender: gender, years: years });
-      if (m) { S.toggleAttendance(m.id, true); pushShared(); }
+      const club = S.getActiveClub();
+      const existing = S.clubMembers(club).filter(function (x) { return x.type === "guest"; })
+        .find(function (x) { return String(x.name).toLowerCase() === name.toLowerCase(); });
+      if (existing) {
+        S.toggleAttendance(existing.id, true);
+        pushShared();
+        global.alert("이미 신청된 게스트라 참석 체크했어요: " + existing.name);
+      } else {
+        const gender = container.querySelector("#g-gender").value;
+        const ntrp = container.querySelector("#g-ntrp").value;
+        const years = container.querySelector("#g-years").value;
+        const m = S.addMember(name, "guest", ntrp, club, { gender: gender, years: years });
+        if (m) { S.toggleAttendance(m.id, true); pushShared(); }
+      }
+      guestQuery = ""; // 신청 후 검색 초기화(참석 명단 기본 보기)
       render(container);
     });
   }
