@@ -197,6 +197,8 @@
     };
     const g = normGender(extra.gender); if (g) m.gender = g;
     if (extra.years != null && extra.years !== "") { const y = parseInt(extra.years, 10); if (!isNaN(y)) m.years = Math.max(0, y); }
+    // 게스트는 방문 날짜 기록 (회원 탭 날짜별 구분/엑셀용)
+    if (m.type === "guest") m.date = String(extra.date || (state.session && state.session.date) || todayStr()).trim();
     state.members.push(m);
     commit();
     return m;
@@ -254,6 +256,8 @@
     const m = getMember(id);
     if (!m) return;
     Object.assign(m, patch);
+    // 게스트로 전환되며 날짜가 없으면 현재 세션 날짜 부여
+    if (m.type === "guest" && !m.date) m.date = String((state.session && state.session.date) || todayStr());
     commit();
   }
   function removeMember(id) {

@@ -348,6 +348,14 @@ html, body {
 .btn-tiny:hover { background: var(--line); }
 .stay-badge { font-size: 12px; font-weight: 800; color: var(--ink); background: var(--accent); padding: 4px 9px; border-radius: 8px; margin-left: auto; }
 .round-time { font-size: 12px; font-weight: 800; color: var(--ink-soft); margin-left: 6px; }
+
+/* 게스트 날짜별 그룹 (회원 관리) */
+.guest-date-group { margin-bottom: 10px; }
+.guest-date-head {
+  font-size: 13px; font-weight: 800; color: var(--ink-soft);
+  padding: 6px 4px; margin-top: 4px; border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 6px;
+}
 .add-row input[type="text"]:focus { border-color: var(--ink); background: #fff; }
 .type-select {
   font-family: inherit;

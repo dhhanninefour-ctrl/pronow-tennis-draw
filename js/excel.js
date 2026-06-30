@@ -34,6 +34,7 @@
     return String(v).trim();
   }
 
+  const MEMBER_HEADER = ["이름", "아이디", "비밀번호", "구분", "성별", "NTRP", "구력", "이메일", "날짜"];
   function rowsFromMembers(members) {
     return members.map(function (m) {
       return {
@@ -41,8 +42,11 @@
         "아이디": m.loginId || "",
         "비밀번호": m.loginPw || "",
         "구분": m.type === "guest" ? "게스트" : "정기",
+        "성별": m.gender === "F" ? "여" : m.gender === "M" ? "남" : "",
         "NTRP": (typeof m.ntrp === "number") ? m.ntrp.toFixed(1) : "",
-        "이메일": m.email || ""
+        "구력": (typeof m.years === "number") ? m.years : "",
+        "이메일": m.email || "",
+        "날짜": m.type === "guest" ? (m.date || "") : ""
       };
     });
   }
@@ -52,15 +56,15 @@
     const rows = rowsFromMembers(members);
     return ensureXLSX().then(function (ok) {
       if (ok && global.XLSX) {
-        const ws = global.XLSX.utils.json_to_sheet(rows, { header: ["이름", "아이디", "비밀번호", "구분", "NTRP", "이메일"] });
-        ws["!cols"] = [{ wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 8 }, { wch: 20 }];
+        const ws = global.XLSX.utils.json_to_sheet(rows, { header: MEMBER_HEADER });
+        ws["!cols"] = [{ wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 6 }, { wch: 8 }, { wch: 6 }, { wch: 20 }, { wch: 12 }];
         const wb = global.XLSX.utils.book_new();
         global.XLSX.utils.book_append_sheet(wb, ws, "회원");
         global.XLSX.writeFile(wb, "회원목록.xlsx");
         return "xlsx";
       }
       // CSV 대체 (엑셀 한글 깨짐 방지용 BOM)
-      const header = ["이름", "아이디", "비밀번호", "구분", "NTRP", "이메일"];
+      const header = MEMBER_HEADER;
       const lines = [header.join(",")].concat(rows.map(function (r) {
         return header.map(function (h) { return csvCell(r[h]); }).join(",");
       }));
@@ -131,7 +135,11 @@
       const loginId = String(raw(["아이디", "id", "loginid", "아이디(id)"]) || "").trim();
       const loginPw = String(raw(["비밀번호", "pw", "password", "암호"]) || "").trim();
       const email = String(raw(["이메일", "email", "메일"]) || "").trim();
-      return { name: name, type: type, ntrp: ntrp, loginId: loginId, loginPw: loginPw, email: email };
+      const gender = String(raw(["성별", "gender", "sex"]) || "").trim();
+      const yearsRaw = raw(["구력", "years", "경력"]);
+      const years = (yearsRaw === "" || yearsRaw == null) ? "" : yearsRaw;
+      const date = String(raw(["날짜", "date"]) || "").trim();
+      return { name: name, type: type, ntrp: ntrp, loginId: loginId, loginPw: loginPw, email: email, gender: gender, years: years, date: date };
     }).filter(function (x) { return x.name; });
   }
 

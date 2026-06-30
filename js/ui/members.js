@@ -64,7 +64,7 @@
           '<button id="excel-down" class="btn btn-ghost">⬇️ 엑셀 다운로드</button>' +
           '<button id="excel-up" class="btn btn-ghost">⬆️ 엑셀 업로드</button>' +
         '</div>' +
-        '<p class="muted small excel-hint">엑셀 컬럼: <b>이름</b> · <b>아이디</b> · <b>비밀번호</b> · <b>구분</b>(정기/게스트) · <b>NTRP</b>(1.0~7.0) · <b>이메일</b>. 관리자가 임시 아이디/비밀번호를 만들어 올리면 회원이 로그인 후 직접 바꿀 수 있어요.</p>' +
+        '<p class="muted small excel-hint">엑셀 컬럼: <b>이름·아이디·비밀번호·구분</b>(정기/게스트)<b>·성별·NTRP·구력·이메일·날짜</b>. <b>게스트</b>는 <b>날짜</b>(방문일)로 구분돼 표시·저장됩니다. 임시 아이디/비밀번호는 회원이 로그인 후 직접 바꿀 수 있어요.</p>' +
         (UI.ntrpGuideHtml ? UI.ntrpGuideHtml() : "") +
 
         pendingSection(pending) +
@@ -82,7 +82,7 @@
         '<p class="warn" id="member-warn" hidden></p>' +
 
         section("정기 멤버", "regular", regulars) +
-        section("게스트", "guest", guests) +
+        guestSection(guests) +
       '</div>';
 
     bind(container);
@@ -104,37 +104,67 @@
       '<ul class="member-list">' + rows + '</ul></div>';
   }
 
-  // 트리(접기/펼치기) + 검색 섹션
+  // 회원 한 줄 (게스트는 날짜 표시)
+  function memberRow(m) {
+    const sub = (m.loginId ? "@" + esc(m.loginId) : '<span class="muted">아이디 없음</span>') +
+      (m.type === "guest" && m.date ? ' · 📅 ' + esc(m.date) : "");
+    return '<li class="member-card" data-id="' + m.id + '" data-name="' + esc(m.name).toLowerCase() + '">' +
+      '<div class="member-info"><span class="member-name">' + esc(m.name) + '</span>' +
+        '<span class="member-sub">' + sub + '</span></div>' +
+      ntrpBadge(m) +
+      clubChip(m) +
+      '<span class="badge ' + (m.type === "guest" ? "badge-guest" : "badge-regular") + '">' +
+        (m.type === "guest" ? "게스트" : "정기") + '</span>' +
+      '<button class="icon-btn' + (S.canGenerateDraw(m.id) ? ' permit-on' : '') + '" data-act="permit" title="대진 생성 권한 부여/해제">🎾</button>' +
+      '<button class="icon-btn" data-act="edit" title="정보 수정">✏️</button>' +
+      '<button class="icon-btn" data-act="toggle" title="정기/게스트 전환">🔁</button>' +
+      '<button class="icon-btn" data-act="del" title="삭제">🗑</button>' +
+    '</li>';
+  }
+
+  function treeHead(title, type, count, guest) {
+    const open = secOpen[type] !== false;
+    return '<h3 class="tree-head" data-act="tree-toggle" data-tree="' + type + '">' +
+      '<span class="tree-caret">' + (open ? "▼" : "▶") + '</span> ' + title +
+      ' <span class="count-pill ' + (guest ? "pill-guest" : "") + '">' + count + '</span></h3>';
+  }
+
+  // 트리(접기/펼치기) + 검색 섹션 (정기 멤버용)
   function section(title, type, list) {
-    const pill = type === "guest" ? "pill-guest" : "";
-    const open = secOpen[type] !== false; // 기본 펼침
-    const head =
-      '<h3 class="tree-head" data-act="tree-toggle" data-tree="' + type + '">' +
-        '<span class="tree-caret">' + (open ? "▼" : "▶") + '</span> ' + title +
-        ' <span class="count-pill ' + pill + '">' + list.length + '</span></h3>';
+    const open = secOpen[type] !== false;
     if (list.length === 0) {
       return '<div class="member-section tree' + (open ? "" : " collapsed") + '" data-tree-sec="' + type + '">' +
-        head + '<div class="tree-body"><p class="empty">아직 없습니다.</p></div></div>';
+        treeHead(title, type, 0, type === "guest") + '<div class="tree-body"><p class="empty">아직 없습니다.</p></div></div>';
     }
-    const rows = list.map(function (m) {
-      return '<li class="member-card" data-id="' + m.id + '" data-name="' + esc(m.name).toLowerCase() + '">' +
-        '<div class="member-info"><span class="member-name">' + esc(m.name) + '</span>' +
-          (m.loginId ? '<span class="member-sub">@' + esc(m.loginId) + '</span>' : '<span class="member-sub muted">아이디 없음</span>') + '</div>' +
-        ntrpBadge(m) +
-        clubChip(m) +
-        '<span class="badge ' + (m.type === "guest" ? "badge-guest" : "badge-regular") + '">' +
-          (m.type === "guest" ? "게스트" : "정기") + '</span>' +
-        '<button class="icon-btn' + (S.canGenerateDraw(m.id) ? ' permit-on' : '') + '" data-act="permit" title="대진 생성 권한 부여/해제">🎾</button>' +
-        '<button class="icon-btn" data-act="edit" title="정보 수정">✏️</button>' +
-        '<button class="icon-btn" data-act="toggle" title="정기/게스트 전환">🔁</button>' +
-        '<button class="icon-btn" data-act="del" title="삭제">🗑</button>' +
-      '</li>';
-    }).join("");
     return '<div class="member-section tree' + (open ? "" : " collapsed") + '" data-tree-sec="' + type + '">' +
-      head +
+      treeHead(title, type, list.length, type === "guest") +
       '<div class="tree-body">' +
         '<input type="text" class="tree-search" data-tree-search="' + type + '" placeholder="🔍 이름 검색" value="' + esc(secQuery[type] || "") + '" />' +
-        '<ul class="member-list">' + rows + '</ul>' +
+        '<ul class="member-list">' + list.map(memberRow).join("") + '</ul>' +
+      '</div></div>';
+  }
+
+  // 게스트: 날짜별 그룹 트리
+  function guestSection(guests) {
+    const open = secOpen.guest !== false;
+    const head = treeHead("게스트 (날짜별)", "guest", guests.length, true);
+    if (!guests.length) {
+      return '<div class="member-section tree' + (open ? "" : " collapsed") + '" data-tree-sec="guest">' +
+        head + '<div class="tree-body"><p class="empty">아직 없습니다.</p></div></div>';
+    }
+    const byDate = {};
+    guests.forEach(function (m) { const d = m.date || "날짜 없음"; (byDate[d] = byDate[d] || []).push(m); });
+    const groups = Object.keys(byDate).sort(function (a, b) { return String(b).localeCompare(String(a)); })
+      .map(function (d) {
+        return '<div class="guest-date-group">' +
+          '<div class="guest-date-head">📅 ' + esc(d) + ' <span class="count-pill pill-guest">' + byDate[d].length + '명</span></div>' +
+          '<ul class="member-list">' + byDate[d].map(memberRow).join("") + '</ul></div>';
+      }).join("");
+    return '<div class="member-section tree' + (open ? "" : " collapsed") + '" data-tree-sec="guest">' +
+      head +
+      '<div class="tree-body">' +
+        '<input type="text" class="tree-search" data-tree-search="guest" placeholder="🔍 이름 검색" value="' + esc(secQuery.guest || "") + '" />' +
+        groups +
       '</div></div>';
   }
 
@@ -193,7 +223,7 @@
           let added = 0, skipped = 0;
           rows.forEach(function (r) {
             if (existing[r.name]) { skipped++; return; }
-            const mm = S.addMember(r.name, r.type, r.ntrp, club);
+            const mm = S.addMember(r.name, r.type, r.ntrp, club, { gender: r.gender, years: r.years, date: r.date });
             if (mm && (r.loginId || r.loginPw || r.email)) {
               S.updateMember(mm.id, {
                 loginId: (r.loginId || "").trim(),
