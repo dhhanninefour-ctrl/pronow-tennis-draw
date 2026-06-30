@@ -357,6 +357,9 @@ html, body {
   display: flex; align-items: center; gap: 6px;
 }
 
+/* 대진 생성 차단 안내 */
+.gen-blocked { text-align: center; padding: 10px; }
+
 /* 대진 라운드 접기/펼치기 트리 */
 .round-block.tree.collapsed .tree-body { display: none; }
 .round-title.tree-head { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; }

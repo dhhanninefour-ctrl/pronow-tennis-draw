@@ -102,6 +102,7 @@
     const present = S.presentMembers();
 
     const canGen = !!(UI.memberId && S.canGenerateDraw(UI.memberId));
+    const past = S.isPastDate(date);
     const need = (st.session.mode === "singles") ? 2 : 4;
 
     container.innerHTML =
@@ -126,11 +127,6 @@
           '</div>' +
         '</div>' +
 
-        (canGen
-          ? '<button id="member-gen" class="btn btn-primary btn-lg member-gen"' + (present.length < need ? ' disabled' : '') + '>' +
-              '🎾 대진 생성 →' + (present.length < need ? ' (' + need + '명 이상)' : '') + '</button>'
-          : '') +
-
         // ── 게스트 (투표 밑, 댓글형 입력) ──
         '<div class="member-section guest-zone tree' + (treeOpen.guest ? "" : " collapsed") + '" data-tree-sec="guest">' +
           '<h3 class="tree-head" data-act="tree-toggle" data-tree="guest">' +
@@ -150,6 +146,14 @@
             : '<p class="empty">아직 게스트가 없습니다. 위에 이름을 적어 추가하세요.</p>') +
           '</div>' +
         '</div>' +
+
+        // ── 대진 생성 (회원/게스트 추가 아래, 권한자만) ──
+        (canGen
+          ? (past
+              ? '<p class="muted small gen-blocked">⛔ 지난 날짜(' + esc(date) + ')는 대진을 생성할 수 없습니다.</p>'
+              : '<button id="member-gen" class="btn btn-primary btn-lg member-gen"' + (present.length < need ? ' disabled' : '') + '>' +
+                  '🎾 대진 생성 →' + (present.length < need ? ' (' + need + '명 이상)' : '') + '</button>')
+          : "") +
       '</div>';
 
     bind(container);
@@ -179,6 +183,7 @@
     if (gen) gen.addEventListener("click", function () {
       if (gen.disabled) return;
       if (!(UI.memberId && S.canGenerateDraw(UI.memberId))) { global.alert("대진 생성 권한이 없습니다. 관리자에게 권한을 요청하세요."); return; }
+      if (S.isPastDate(S.get().session.date)) { global.alert("지난 날짜는 대진을 생성할 수 없습니다."); return; }
       if (!global.confirm("출석 인원으로 대진을 생성할까요?")) return;
       if (UI.draw && UI.draw.generateAndGo) UI.draw.generateAndGo(false);
     });

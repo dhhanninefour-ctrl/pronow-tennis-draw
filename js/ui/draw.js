@@ -174,7 +174,7 @@
     const allRoundsToggle = '<button id="rounds-all" class="btn btn-ghost btn-sm">' +
       (gen.rounds.every(function (rd) { return roundOpen[rd.roundNo] === false; }) ? "모두 펼치기" : "모두 접기") + '</button>';
 
-    const regenBtn = (editable && !UI.readonly && !editMode) ? '<button id="regen-btn" class="btn btn-ghost">🔄 다시 생성</button>' : "";
+    const regenBtn = (editable && UI.isSuper && !editMode && !S.isPastDate(st.session.date)) ? '<button id="regen-btn" class="btn btn-ghost">🔄 다시 생성</button>' : "";
     const editToggle = canEdit
       ? '<button id="draw-edit-toggle" class="btn ' + (editMode ? "btn-primary" : "btn-ghost") + '">' + (editMode ? "✓ 수정 완료" : "✏️ 수정") + '</button>'
       : "";
@@ -510,7 +510,9 @@
     if (dd) dd.addEventListener("change", function () { S.setSessionConfig({ date: dd.value }); });
     const regen = container.querySelector("#regen-btn");
     if (regen) regen.addEventListener("click", function () {
-      if (!global.confirm("대진을 다시 생성할까요? 지금 대진이 새 조합으로 바뀝니다.")) return;
+      if (!UI.isSuper) { global.alert("대진 생성은 총괄관리자만 가능합니다."); return; }
+      if (S.isPastDate(S.get().session.date)) { global.alert("지난 날짜는 대진을 생성할 수 없습니다."); return; }
+      if (!global.confirm("대진을 다시 생성합니다. 지금 대진이 새 조합으로 바뀝니다.\n진행하시겠어요?")) return;
       generateAndGo(true);
     });
 

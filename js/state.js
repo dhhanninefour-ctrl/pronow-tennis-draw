@@ -53,6 +53,8 @@
     const base = minOfTime(startTime); if (base == null) return "";
     return fmtHM(base + idx * (stepMin || 30));
   }
+  // 오늘보다 과거 날짜인지 (지난 날짜는 대진 생성 불가)
+  function isPastDate(date) { return !!date && String(date) < todayStr(); }
 
   function defaultState() {
     return {
@@ -496,6 +498,7 @@
     stayMinutes: stayMinutes,
     fmtDuration: fmtDuration,
     roundTime: roundTime,
+    isPastDate: isPastDate,
     addMember: addMember,
     requestSignup: requestSignup,
     setMemberClub: setMemberClub,

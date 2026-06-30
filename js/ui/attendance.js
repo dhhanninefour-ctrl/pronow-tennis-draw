@@ -75,9 +75,13 @@
             attSection("게스트", "guest", members.filter(function (m) { return m.type === "guest"; }), true)) +
 
         '<div class="sticky-cta">' +
-          '<button id="generate-btn" class="btn btn-primary btn-lg"' +
-            (presentCount < (sess.mode === "singles" ? 2 : 4) ? " disabled" : "") + '>' +
-            '대진 생성 →</button>' +
+          (S.isPastDate(sess.date)
+            ? '<p class="muted small gen-blocked">⛔ 지난 날짜(' + esc(sess.date || "") + ')는 대진을 생성할 수 없습니다.</p>'
+            : (!UI.isSuper
+                ? '<p class="muted small gen-blocked">🔒 대진 생성은 <b>총괄관리자</b>만 할 수 있습니다.</p>'
+                : '<button id="generate-btn" class="btn btn-primary btn-lg"' +
+                    (presentCount < (sess.mode === "singles" ? 2 : 4) ? " disabled" : "") + '>' +
+                    '대진 생성 →</button>')) +
         '</div>' +
       '</div>';
 
@@ -302,7 +306,9 @@
     const genBtn = container.querySelector("#generate-btn");
     if (genBtn) {
       genBtn.addEventListener("click", function () {
-        if (!global.confirm("출석한 인원으로 대진을 생성할까요?")) return;
+        if (!UI.isSuper) { global.alert("대진 생성은 총괄관리자만 가능합니다."); return; }
+        if (S.isPastDate(S.get().session.date)) { global.alert("지난 날짜는 대진을 생성할 수 없습니다."); return; }
+        if (!global.confirm("출석한 인원으로 대진을 생성합니다.\n진행하시겠어요?")) return;
         UI.draw.generateAndGo();
       });
     }
