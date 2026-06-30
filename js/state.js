@@ -24,8 +24,34 @@
   function newSession() {
     return {
       id: uid(), date: todayStr(), mode: "doubles", courts: 2,
-      rounds: 5, seed: 1, scoring: false, attendance: {}, times: {}, generated: null
+      rounds: 5, seed: 1, scoring: false, attendance: {}, times: {},
+      startTime: "", endTime: "", generated: null
     };
+  }
+
+  // ── 시간 유틸 ───────────────────────────────────────────────────────
+  function minOfTime(s) {
+    if (!s) return null; const p = String(s).split(":");
+    const h = parseInt(p[0], 10), m = parseInt(p[1], 10);
+    if (isNaN(h) || isNaN(m)) return null; return h * 60 + m;
+  }
+  function fmtHM(totalMin) {
+    const t = ((totalMin % 1440) + 1440) % 1440;
+    return String(Math.floor(t / 60)).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0");
+  }
+  function fmtDuration(mins) {
+    if (mins == null || mins < 0) return "";
+    const h = Math.floor(mins / 60), m = mins % 60;
+    return (h ? h + "시간 " : "") + (m || !h ? m + "분" : "").trim();
+  }
+  function stayMinutes(t) {
+    if (!t) return null; const a = minOfTime(t.in), b = minOfTime(t.out);
+    if (a == null || b == null) return null; return Math.max(0, b - a);
+  }
+  // 라운드 시작 시간(세션 시작 + 30분 단위 * idx)
+  function roundTime(startTime, idx, stepMin) {
+    const base = minOfTime(startTime); if (base == null) return "";
+    return fmtHM(base + idx * (stepMin || 30));
   }
 
   function defaultState() {
@@ -363,7 +389,8 @@
     const record = {
       id: uid(), date: s.date, mode: s.mode, courts: s.courts, rounds: s.rounds,
       scoring: s.scoring, generated: clone(s.generated),
-      names: namesForGenerated(s.generated), savedAt: todayStr()
+      names: namesForGenerated(s.generated), times: clone(s.times),
+      startTime: s.startTime, endTime: s.endTime, savedAt: todayStr()
     };
     state.history.unshift(record);
     state.session = {
@@ -425,6 +452,9 @@
     canGenerateDraw: canGenerateDraw,
     setDrawPermit: setDrawPermit,
     setMemberTime: setMemberTime,
+    stayMinutes: stayMinutes,
+    fmtDuration: fmtDuration,
+    roundTime: roundTime,
     addMember: addMember,
     requestSignup: requestSignup,
     setMemberClub: setMemberClub,

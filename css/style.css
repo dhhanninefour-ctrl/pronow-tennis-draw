@@ -346,6 +346,8 @@ html, body {
   background: var(--surface); border-radius: 8px; cursor: pointer; font-weight: 700; color: var(--ink-soft);
 }
 .btn-tiny:hover { background: var(--line); }
+.stay-badge { font-size: 12px; font-weight: 800; color: var(--ink); background: var(--accent); padding: 4px 9px; border-radius: 8px; margin-left: auto; }
+.round-time { font-size: 12px; font-weight: 800; color: var(--ink-soft); margin-left: 6px; }
 .add-row input[type="text"]:focus { border-color: var(--ink); background: #fff; }
 .type-select {
   font-family: inherit;

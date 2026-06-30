@@ -192,13 +192,20 @@
   }
 
   const DRAW_HEADER = ["날짜", "라운드", "코트", "A팀", "B팀", "A점수", "B점수", "휴식"];
-  function exportDraw(rows) {
+  const ATT_HEADER = ["날짜", "이름", "구분", "NTRP", "출근", "퇴근", "체류(분)"];
+  // rows: 대진 행 / attRows(선택): 출퇴근 행 → 있으면 두 번째 시트로 함께 저장
+  function exportDraw(rows, attRows) {
     return ensureXLSX().then(function (ok) {
       if (ok && global.XLSX) {
+        const wb = global.XLSX.utils.book_new();
         const ws = global.XLSX.utils.json_to_sheet(rows, { header: DRAW_HEADER });
         ws["!cols"] = [{ wch: 12 }, { wch: 7 }, { wch: 6 }, { wch: 22 }, { wch: 22 }, { wch: 7 }, { wch: 7 }, { wch: 24 }];
-        const wb = global.XLSX.utils.book_new();
         global.XLSX.utils.book_append_sheet(wb, ws, "대진");
+        if (attRows && attRows.length) {
+          const ws2 = global.XLSX.utils.json_to_sheet(attRows, { header: ATT_HEADER });
+          ws2["!cols"] = [{ wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 7 }, { wch: 8 }, { wch: 8 }, { wch: 9 }];
+          global.XLSX.utils.book_append_sheet(wb, ws2, "출퇴근");
+        }
         global.XLSX.writeFile(wb, "대진양식.xlsx");
         return "xlsx";
       }
@@ -206,6 +213,25 @@
         return DRAW_HEADER.map(function (h) { return csvCell(r[h]); }).join(",");
       }));
       downloadBlob(new global.Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" }), "대진양식.csv");
+      return "csv";
+    });
+  }
+
+  // 출퇴근만 단독 다운로드
+  function exportAttendance(rows) {
+    return ensureXLSX().then(function (ok) {
+      if (ok && global.XLSX) {
+        const ws = global.XLSX.utils.json_to_sheet(rows, { header: ATT_HEADER });
+        ws["!cols"] = [{ wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 7 }, { wch: 8 }, { wch: 8 }, { wch: 9 }];
+        const wb = global.XLSX.utils.book_new();
+        global.XLSX.utils.book_append_sheet(wb, ws, "출퇴근");
+        global.XLSX.writeFile(wb, "출퇴근.xlsx");
+        return "xlsx";
+      }
+      const lines = [ATT_HEADER.join(",")].concat(rows.map(function (r) {
+        return ATT_HEADER.map(function (h) { return csvCell(r[h]); }).join(",");
+      }));
+      downloadBlob(new global.Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" }), "출퇴근.csv");
       return "csv";
     });
   }
@@ -232,6 +258,7 @@
 
   global.TennisExcel = {
     exportMembers: exportMembers, importMembers: importMembers,
-    readRows: readRows, exportDraw: exportDraw, exportHistory: exportHistory
+    readRows: readRows, exportDraw: exportDraw, exportHistory: exportHistory,
+    exportAttendance: exportAttendance
   };
 })(typeof window !== "undefined" ? window : this);

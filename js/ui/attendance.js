@@ -28,11 +28,15 @@
 
         '<div class="config-grid">' +
           configField("날짜", '<input type="date" class="date-in" id="sess-date" value="' + (sess.date || "") + '" />') +
+          configField("시작 시간", '<input type="time" class="date-in" id="sess-start" value="' + (sess.startTime || "") + '" />') +
+          configField("종료 시간", '<input type="time" class="date-in" id="sess-end" value="' + (sess.endTime || "") + '" />') +
           configField("모드", modeToggle(sess.mode)) +
           configField("코트 수", stepper("courts", sess.courts, 1, 12)) +
           configField("라운드 수", stepper("rounds", sess.rounds, 1, 20)) +
           configField("점수 기록", scoringToggle(sess.scoring)) +
         '</div>' +
+        '<p class="muted small">⏱ 라운드는 <b>시작 시간부터 30분 간격</b>으로 대진 화면에 표시됩니다. 출석한 인원의 <b>출퇴근·체류시간</b>도 아래에서 기록할 수 있어요.</p>' +
+        '<div class="excel-row"><button id="att-down" class="btn btn-ghost">⬇️ 출퇴근 다운로드</button></div>' +
 
         '<div class="add-row guest-form">' +
           '<input type="text" id="guest-name" placeholder="게스트 이름" autocomplete="off" maxlength="20" />' +
@@ -61,13 +65,33 @@
     bind(container);
   }
 
+  function fmtNow() {
+    const d = new Date();
+    return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+  function attTimeControls(id) {
+    const t = (S.get().session.times || {})[id] || {};
+    const stay = S.stayMinutes(t);
+    return '<div class="time-row" data-id="' + id + '">' +
+      '<span class="time-lbl">🟢 출근</span>' +
+      '<input type="time" class="time-in" data-field="in" value="' + (t.in || "") + '" />' +
+      '<button type="button" class="time-now btn-tiny" data-field="in">지금</button>' +
+      '<span class="time-lbl">🔴 퇴근</span>' +
+      '<input type="time" class="time-in" data-field="out" value="' + (t.out || "") + '" />' +
+      '<button type="button" class="time-now btn-tiny" data-field="out">지금</button>' +
+      (stay != null ? '<span class="stay-badge">체류 ' + S.fmtDuration(stay) + '</span>' : "") +
+    '</div>';
+  }
   function attCard(m) {
     const present = !!S.get().session.attendance[m.id];
     return '<li class="att-card ' + (present ? "on" : "") + '" data-id="' + m.id + '">' +
-      '<span class="check">' + (present ? "✅" : "⬜") + '</span>' +
-      '<span class="member-name">' + esc(m.name) + '</span>' +
-      '<span class="badge ' + (m.type === "guest" ? "badge-guest" : "badge-regular") + '">' +
-        (m.type === "guest" ? "게스트" : "정기") + '</span>' +
+      '<div class="att-main" data-act="att-toggle" data-id="' + m.id + '">' +
+        '<span class="check">' + (present ? "✅" : "⬜") + '</span>' +
+        '<span class="member-name">' + esc(m.name) + '</span>' +
+        '<span class="badge ' + (m.type === "guest" ? "badge-guest" : "badge-regular") + '">' +
+          (m.type === "guest" ? "게스트" : "정기") + '</span>' +
+      '</div>' +
+      (present ? attTimeControls(m.id) : "") +
     '</li>';
   }
 
@@ -104,14 +128,48 @@
   }
 
   function bind(container) {
-    container.querySelectorAll(".att-card").forEach(function (card) {
-      card.addEventListener("click", function () {
-        S.toggleAttendance(card.getAttribute("data-id"));
+    container.querySelectorAll('[data-act="att-toggle"]').forEach(function (main) {
+      main.addEventListener("click", function () {
+        S.toggleAttendance(main.getAttribute("data-id"));
       });
+    });
+
+    // 출퇴근 시간 입력 / "지금" / 다운로드
+    container.querySelectorAll(".time-in").forEach(function (inp) {
+      inp.addEventListener("click", function (e) { e.stopPropagation(); });
+      inp.addEventListener("change", function () {
+        const row = inp.closest(".time-row");
+        S.setMemberTime(row.getAttribute("data-id"), inp.getAttribute("data-field"), inp.value);
+      });
+    });
+    container.querySelectorAll(".time-now").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const row = btn.closest(".time-row");
+        S.setMemberTime(row.getAttribute("data-id"), btn.getAttribute("data-field"), fmtNow());
+      });
+    });
+    const attDown = container.querySelector("#att-down");
+    if (attDown) attDown.addEventListener("click", function () {
+      const st = S.get(), date = st.session.date || "", times = st.session.times || {};
+      const rows = S.presentMembers().map(function (m) {
+        const t = times[m.id] || {}, stay = S.stayMinutes(t);
+        return { "날짜": date, "이름": m.name, "구분": m.type === "guest" ? "게스트" : "정기",
+          "NTRP": (typeof m.ntrp === "number") ? m.ntrp.toFixed(1) : "",
+          "출근": t.in || "", "퇴근": t.out || "", "체류(분)": stay == null ? "" : stay };
+      });
+      if (!rows.length) { global.alert("출석한 인원이 없습니다."); return; }
+      attDown.disabled = true;
+      Promise.resolve(global.TennisExcel.exportAttendance(rows)).then(function () { attDown.disabled = false; })
+        .catch(function (e) { attDown.disabled = false; global.alert("다운로드 실패: " + e.message); });
     });
 
     const sd = container.querySelector("#sess-date");
     if (sd) sd.addEventListener("change", function () { S.setSessionConfig({ date: sd.value }); });
+    const ss = container.querySelector("#sess-start");
+    if (ss) ss.addEventListener("change", function () { S.setSessionConfig({ startTime: ss.value }); });
+    const se = container.querySelector("#sess-end");
+    if (se) se.addEventListener("change", function () { S.setSessionConfig({ endTime: se.value }); });
 
     container.querySelectorAll(".seg").forEach(function (seg) {
       const kind = seg.getAttribute("data-seg");

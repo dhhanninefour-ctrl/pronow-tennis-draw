@@ -157,8 +157,10 @@
       }).join("");
       const byeHtml = rd.byes && rd.byes.length
         ? '<div class="bye-row">휴식 · ' + (editing ? byeChips(rd.byes, rIdx) : names(rd.byes)) + '</div>' : "";
+      const rtime = editable ? S.roundTime(st.session.startTime, rIdx, 30) : "";
       return '<div class="round-block">' +
-        '<div class="round-title">ROUND ' + rd.roundNo + '</div>' +
+        '<div class="round-title">ROUND ' + rd.roundNo +
+          (rtime ? ' <span class="round-time">🕐 ' + rtime + '</span>' : "") + '</div>' +
         '<div class="court-grid">' + matchesHtml + '</div>' +
         byeHtml +
       '</div>';
@@ -419,11 +421,21 @@
     };
   }
 
+  function attendanceRows() {
+    const st = S.get(), date = st.session.date || "", times = st.session.times || {};
+    return S.presentMembers().map(function (m) {
+      const t = times[m.id] || {}, stay = S.stayMinutes(t);
+      return { "날짜": date, "이름": m.name, "구분": m.type === "guest" ? "게스트" : "정기",
+        "NTRP": (typeof m.ntrp === "number") ? m.ntrp.toFixed(1) : "",
+        "출근": t.in || "", "퇴근": t.out || "", "체류(분)": stay == null ? "" : stay };
+    });
+  }
+
   function bindDrawTools(container) {
     const down = container.querySelector("#draw-down");
     if (down) down.addEventListener("click", function () {
       down.disabled = true;
-      Promise.resolve(global.TennisExcel.exportDraw(drawExportRows())).then(function () { down.disabled = false; })
+      Promise.resolve(global.TennisExcel.exportDraw(drawExportRows(), attendanceRows())).then(function () { down.disabled = false; })
         .catch(function (e) { down.disabled = false; global.alert("다운로드 실패: " + e.message); });
     });
     const up = container.querySelector("#draw-up");

@@ -42,9 +42,10 @@
     const d = new Date();
     return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
   }
-  // 출퇴근(출근/퇴근) 시간 입력 — 출석한 사람만 표시
+  // 출퇴근(출근/퇴근) 시간 입력 + 체류시간 — 출석한 사람만 표시
   function timeControls(id) {
     const t = (S.get().session.times || {})[id] || {};
+    const stay = S.stayMinutes(t);
     return '<div class="time-row" data-id="' + id + '">' +
       '<span class="time-lbl">🟢 출근</span>' +
       '<input type="time" class="time-in" data-field="in" value="' + (t.in || "") + '" />' +
@@ -52,6 +53,7 @@
       '<span class="time-lbl">🔴 퇴근</span>' +
       '<input type="time" class="time-in" data-field="out" value="' + (t.out || "") + '" />' +
       '<button type="button" class="time-now btn-tiny" data-field="out">지금</button>' +
+      (stay != null ? '<span class="stay-badge">체류 ' + S.fmtDuration(stay) + '</span>' : "") +
     '</div>';
   }
 
@@ -193,17 +195,16 @@
         const row = inp.closest(".time-row");
         S.setMemberTime(row.getAttribute("data-id"), inp.getAttribute("data-field"), inp.value);
         pushShared();
+        render(container);
       });
     });
     container.querySelectorAll(".time-now").forEach(function (btn) {
       btn.addEventListener("click", function (e) {
         e.stopPropagation();
         const row = btn.closest(".time-row");
-        const id = row.getAttribute("data-id"), field = btn.getAttribute("data-field"), now = fmtNow();
-        const input = row.querySelector('.time-in[data-field="' + field + '"]');
-        if (input) input.value = now;
-        S.setMemberTime(id, field, now);
+        S.setMemberTime(row.getAttribute("data-id"), btn.getAttribute("data-field"), fmtNow());
         pushShared();
+        render(container);
       });
     });
     // 게스트 댓글: ✅ 토글
