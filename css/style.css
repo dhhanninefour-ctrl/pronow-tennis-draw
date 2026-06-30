@@ -356,6 +356,12 @@ html, body {
   padding: 6px 4px; margin-top: 4px; border-bottom: 1px solid var(--line);
   display: flex; align-items: center; gap: 6px;
 }
+
+/* 대진 라운드 접기/펼치기 트리 */
+.round-block.tree.collapsed .tree-body { display: none; }
+.round-title.tree-head { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; }
+.rounds-toolbar { display: flex; justify-content: flex-end; margin: 2px 0 6px; }
+.round-count { margin-left: auto; font-weight: 600; }
 .add-row input[type="text"]:focus { border-color: var(--ink); background: #fff; }
 .type-select {
   font-family: inherit;

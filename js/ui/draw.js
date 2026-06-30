@@ -13,6 +13,7 @@
   let editMode = false;  // 대진 수기 수정 모드(탭-스왑)
   let selectedLoc = null; // 첫 번째로 고른 선수 위치
   let undoStack = [];    // 직전 대진 스냅샷(되돌리기)
+  let roundOpen = {};    // 라운드별 접기/펼치기 (roundNo→bool, 기본 펼침)
 
   // 수정 권한: 관리자 또는 대진 생성 권한 회원
   function canEditDraw() {
@@ -158,13 +159,20 @@
       const byeHtml = rd.byes && rd.byes.length
         ? '<div class="bye-row">휴식 · ' + (editing ? byeChips(rd.byes, rIdx) : names(rd.byes)) + '</div>' : "";
       const rtime = editable ? S.roundTime(st.session.startTime, rIdx, 30) : "";
-      return '<div class="round-block">' +
-        '<div class="round-title">ROUND ' + rd.roundNo +
-          (rtime ? ' <span class="round-time">🕐 ' + rtime + '</span>' : "") + '</div>' +
-        '<div class="court-grid">' + matchesHtml + '</div>' +
-        byeHtml +
+      const open = roundOpen[rd.roundNo] !== false; // 기본 펼침
+      return '<div class="round-block tree' + (open ? "" : " collapsed") + '" data-round-sec="' + rd.roundNo + '">' +
+        '<div class="round-title tree-head" data-act="round-toggle" data-round="' + rd.roundNo + '">' +
+          '<span class="tree-caret">' + (open ? "▼" : "▶") + '</span> ROUND ' + rd.roundNo +
+          (rtime ? ' <span class="round-time">🕐 ' + rtime + '</span>' : "") +
+          ' <span class="muted small round-count">' + rd.matches.length + '코트</span></div>' +
+        '<div class="tree-body">' +
+          '<div class="court-grid">' + matchesHtml + '</div>' +
+          byeHtml +
+        '</div>' +
       '</div>';
     }).join("");
+    const allRoundsToggle = '<button id="rounds-all" class="btn btn-ghost btn-sm">' +
+      (gen.rounds.every(function (rd) { return roundOpen[rd.roundNo] === false; }) ? "모두 펼치기" : "모두 접기") + '</button>';
 
     const regenBtn = (editable && !UI.readonly && !editMode) ? '<button id="regen-btn" class="btn btn-ghost">🔄 다시 생성</button>' : "";
     const editToggle = canEdit
@@ -191,6 +199,7 @@
         (editable && !editing ? memberScoreHint(scoring) : "") +
         editorLabel +
         warnHtml +
+        '<div class="rounds-toolbar">' + allRoundsToggle + '</div>' +
         roundsHtml +
         (editing ? "" : statsBlock(gen.stats)) +
       '</div>';
@@ -503,6 +512,27 @@
     if (regen) regen.addEventListener("click", function () {
       if (!global.confirm("대진을 다시 생성할까요? 지금 대진이 새 조합으로 바뀝니다.")) return;
       generateAndGo(true);
+    });
+
+    // 라운드 접기/펼치기
+    container.querySelectorAll('[data-act="round-toggle"]').forEach(function (h) {
+      h.addEventListener("click", function () {
+        const rn = h.getAttribute("data-round");
+        const cur = roundOpen[rn] !== false;
+        roundOpen[rn] = !cur;
+        const sec = container.querySelector('[data-round-sec="' + rn + '"]');
+        const caret = h.querySelector(".tree-caret");
+        if (sec) sec.classList.toggle("collapsed", cur);
+        if (caret) caret.textContent = cur ? "▶" : "▼";
+      });
+    });
+    const allBtn = container.querySelector("#rounds-all");
+    if (allBtn) allBtn.addEventListener("click", function () {
+      const sel = selectedDraw(); const g = sel ? sel.generated : null;
+      if (!g) return;
+      const collapse = g.rounds.some(function (rd) { return roundOpen[rd.roundNo] !== false; });
+      g.rounds.forEach(function (rd) { roundOpen[rd.roundNo] = !collapse; });
+      render(container);
     });
 
     // 대진 수정 모드 토글
