@@ -34,9 +34,15 @@
           configField("점수 기록", scoringToggle(sess.scoring)) +
         '</div>' +
 
-        '<div class="add-row">' +
-          '<input type="text" id="guest-name" placeholder="게스트 즉석 추가" autocomplete="off" maxlength="20" />' +
+        '<div class="add-row guest-form">' +
+          '<input type="text" id="guest-name" placeholder="게스트 이름" autocomplete="off" maxlength="20" />' +
+          '<select id="guest-gender" class="type-select"><option value="">성별</option><option value="M">남</option><option value="F">여</option></select>' +
+          '<select id="guest-ntrp" class="type-select">' + guestNtrpOptions() + '</select>' +
+          '<input type="number" id="guest-years" class="type-select num-narrow" placeholder="구력" min="0" max="60" />' +
           '<button id="guest-add" class="btn btn-ghost">+ 게스트</button>' +
+        '</div>' +
+        '<p class="muted small">게스트는 <b>성별 + NTRP 또는 구력(년)</b>을 입력하면 대진 실력 배분에 반영됩니다.</p>' +
+        '<div class="add-row">' +
           '<button id="att-all" class="btn btn-ghost">전체 출석</button>' +
           '<button id="att-none" class="btn btn-ghost">전체 해제</button>' +
         '</div>' +
@@ -67,6 +73,12 @@
 
   function configField(label, inner) {
     return '<div class="config-field"><label>' + label + '</label>' + inner + '</div>';
+  }
+
+  function guestNtrpOptions() {
+    let html = '<option value="">NTRP</option>';
+    for (let v = 2.0; v <= 6.0 + 1e-9; v += 0.5) { const s = v.toFixed(1); html += '<option value="' + s + '">' + s + '</option>'; }
+    return html;
   }
 
   function modeToggle(mode) {
@@ -132,7 +144,10 @@
     container.querySelector("#guest-add").addEventListener("click", function () {
       const name = guestInput.value.trim();
       if (!name) return;
-      const m = S.addMember(name, "guest", "", S.getActiveClub());
+      const gender = container.querySelector("#guest-gender").value;
+      const ntrp = container.querySelector("#guest-ntrp").value;
+      const years = container.querySelector("#guest-years").value;
+      const m = S.addMember(name, "guest", ntrp, S.getActiveClub(), { gender: gender, years: years });
       if (m) S.toggleAttendance(m.id, true); // 즉석 추가한 게스트는 바로 출석
       guestInput.value = "";
     });

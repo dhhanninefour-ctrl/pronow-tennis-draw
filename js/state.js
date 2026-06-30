@@ -139,15 +139,38 @@
     return Math.min(7, Math.max(1, n));
   }
 
-  function addMember(name, type, ntrp, club) {
+  function normGender(g) {
+    if (!g) return null;
+    g = String(g).trim();
+    if (/^(f|여|여자|female|w)$/i.test(g)) return "F";
+    if (/^(m|남|남자|male)$/i.test(g)) return "M";
+    return null;
+  }
+  // 구력(년) → 대략적 NTRP 추정 (대진 밸런싱용)
+  function ntrpFromYears(y) {
+    if (y == null || isNaN(y)) return null;
+    if (y < 1) return 2.0; if (y < 2) return 2.5; if (y < 4) return 3.0;
+    if (y < 7) return 3.5; if (y < 10) return 4.0; return 4.5;
+  }
+  // 대진에 쓸 유효 NTRP: ntrp 우선 → 구력 추정 → 기본 3.0
+  function effectiveNtrp(m) {
+    if (m && typeof m.ntrp === "number") return m.ntrp;
+    const y = m ? ntrpFromYears(m.years) : null;
+    return y != null ? y : 3.0;
+  }
+
+  function addMember(name, type, ntrp, club, extra) {
     const trimmed = (name || "").trim();
     if (!trimmed) return null;
+    extra = extra || {};
     const m = {
       id: uid(), name: trimmed,
       type: type === "guest" ? "guest" : "regular",
       ntrp: parseNtrp(ntrp), club: normClub(club),
       status: "approved", active: true
     };
+    const g = normGender(extra.gender); if (g) m.gender = g;
+    if (extra.years != null && extra.years !== "") { const y = parseInt(extra.years, 10); if (!isNaN(y)) m.years = Math.max(0, y); }
     state.members.push(m);
     commit();
     return m;
@@ -376,6 +399,7 @@
     getActiveClub: getActiveClub,
     setActiveClub: setActiveClub,
     parseNtrp: parseNtrp,
+    effectiveNtrp: effectiveNtrp,
     addMember: addMember,
     requestSignup: requestSignup,
     setMemberClub: setMemberClub,

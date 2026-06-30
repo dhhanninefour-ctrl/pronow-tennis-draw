@@ -266,6 +266,13 @@ html, body {
 /* 지난 기록의 점수(읽기 전용) */
 .score-readonly { align-items: center; justify-content: center; }
 .score-text { font-weight: 800; font-size: 18px; color: var(--ink); min-width: 28px; text-align: center; }
+
+/* 게스트 등록 폼 (이름/성별/NTRP/구력) */
+.guest-form { flex-wrap: wrap; gap: 6px; align-items: center; }
+.guest-form input[type="text"] { flex: 1 1 100%; }
+.guest-form .type-select { flex: 1 1 auto; min-width: 78px; font-size: 14px; padding: 10px; }
+.guest-form .num-narrow { flex: 0 0 92px; width: 92px; }
+.guest-form .btn { flex: 0 0 auto; }
 .add-row input[type="text"]:focus { border-color: var(--ink); background: #fff; }
 .type-select {
   font-family: inherit;

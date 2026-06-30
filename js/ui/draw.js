@@ -53,7 +53,7 @@
   // 출석자로 대진 생성 후 대진 탭으로 이동
   function generateAndGo(bumpSeed) {
     const sess = S.get().session;
-    const players = S.presentMembers().map(function (m) { return { id: m.id, name: m.name, ntrp: m.ntrp }; });
+    const players = S.presentMembers().map(function (m) { return { id: m.id, name: m.name, ntrp: S.effectiveNtrp(m) }; });
     const seed = bumpSeed ? (sess.seed || 1) + 1 : (sess.seed || 1);
 
     const result = global.TennisDraw.generate({
