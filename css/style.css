@@ -259,6 +259,10 @@ html, body {
 }
 .draw-date-row label { font-size: 13px; font-weight: 800; color: var(--ink-soft); }
 .hist-date-in { padding: 6px 8px; font-size: 13px; }
+/* 날짜 기간(범위) 검색 */
+.draw-date-row.date-range { flex-wrap: wrap; }
+.date-range .range-in { flex: 1 1 130px; min-width: 120px; padding: 7px 9px; font-size: 13px; }
+.date-range .range-sep { font-weight: 800; color: var(--muted); }
 
 /* 대진·기록 합친 화면: 기록 섹션 구분선 */
 .sec-hist { border-top: 8px solid var(--surface); margin-top: 4px; }

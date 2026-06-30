@@ -12,6 +12,21 @@
 
   const expanded = {}; // recordId -> bool
   let drawOnly = false; // 대진만 보기 모드
+  let histFrom = "", histTo = ""; // 기록 날짜 기간 검색(빈 값=전체)
+
+  function inHistRange(d) {
+    if (histFrom && String(d) < histFrom) return false;
+    if (histTo && String(d) > histTo) return false;
+    return true;
+  }
+  function histRangeBar() {
+    return '<div class="draw-date-row date-range hist-range"><label>📅 기간</label>' +
+      '<input type="date" class="date-in range-in" id="hist-from" value="' + esc(histFrom) + '" title="시작일" />' +
+      '<span class="range-sep">~</span>' +
+      '<input type="date" class="date-in range-in" id="hist-to" value="' + esc(histTo) + '" title="종료일" />' +
+      ((histFrom || histTo) ? '<button type="button" id="hist-range-clear" class="btn-tiny">전체</button>' : '') +
+    '</div>';
+  }
 
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -139,6 +154,7 @@
     // 현재 진행 중인 대진도 '현재 모임'으로 맨 위에 미리보기 (저장 전이라도 날짜·라운드별로 확인)
     const cur = S.sessionRecord ? S.sessionRecord() : null;
     const hist = cur ? [cur].concat(saved) : saved;
+    const ranged = hist.filter(function (h) { return inHistRange(h.date); });
     const ro = !!UI.readonly;
     const canSave = !ro && !!(st.session.generated && st.session.generated.rounds && st.session.generated.rounds.length);
 
@@ -159,13 +175,16 @@
 
         (hist.length === 0
           ? '<p class="empty">아직 저장된 모임이 없습니다.</p>'
-          : ('<div class="hist-toolbar">' +
-               '<button id="draw-only-toggle" class="btn ' + (drawOnly ? "btn-primary" : "btn-ghost") + ' btn-sm">' +
-                 (drawOnly ? "📋 전체 보기" : "🎾 대진만 보기") + '</button>' +
-               (drawOnly ? "" : '<button id="expand-all" class="btn btn-ghost btn-sm">' +
-                 (allOpen(hist) ? "모두 접기" : "모두 펼치기") + '</button>') +
-             '</div>' +
-             '<div class="hist-list' + (drawOnly ? " draw-only" : "") + '">' + hist.map(card).join("") + '</div>')) +
+          : (histRangeBar() +
+             (ranged.length === 0
+               ? '<p class="empty">선택한 기간에 기록이 없습니다. 기간을 바꾸거나 <b>전체</b>를 누르세요.</p>'
+               : ('<div class="hist-toolbar">' +
+                    '<button id="draw-only-toggle" class="btn ' + (drawOnly ? "btn-primary" : "btn-ghost") + ' btn-sm">' +
+                      (drawOnly ? "📋 전체 보기" : "🎾 대진만 보기") + '</button>' +
+                    (drawOnly ? "" : '<button id="expand-all" class="btn btn-ghost btn-sm">' +
+                      (allOpen(ranged) ? "모두 접기" : "모두 펼치기") + '</button>') +
+                  '</div>' +
+                  '<div class="hist-list' + (drawOnly ? " draw-only" : "") + '">' + ranged.map(card).join("") + '</div>')))) +
       '</div>';
 
     bind(container);
@@ -260,6 +279,13 @@
       drawOnly = !drawOnly;
       render(container);
     });
+    // 기간(날짜 범위) 검색
+    const hf = container.querySelector("#hist-from");
+    if (hf) hf.addEventListener("change", function () { histFrom = hf.value; render(container); });
+    const ht = container.querySelector("#hist-to");
+    if (ht) ht.addEventListener("change", function () { histTo = ht.value; render(container); });
+    const hrc = container.querySelector("#hist-range-clear");
+    if (hrc) hrc.addEventListener("click", function () { histFrom = ""; histTo = ""; render(container); });
 
     const down = container.querySelector("#hist-down");
     if (down) down.addEventListener("click", function () {

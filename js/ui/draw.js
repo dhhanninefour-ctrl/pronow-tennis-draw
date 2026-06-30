@@ -9,6 +9,7 @@
   const UI = (global.TennisUI = global.TennisUI || {});
 
   let viewDate = null;   // 보고 있는 날짜(null=현재 대진 기본)
+  let rangeFrom = "", rangeTo = ""; // 대진 날짜 기간 검색(빈 값=전체)
   let curNames = null;   // 지난 기록을 볼 때의 이름맵(null=현재 회원으로 해석)
   let editMode = false;  // 대진 수기 수정 모드(탭-스왑)
   let selectedLoc = null; // 첫 번째로 고른 선수 위치
@@ -90,12 +91,20 @@
     return Object.keys(map).map(function (k) { return map[k]; })
       .sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
   }
+  function inDateRange(d) {
+    if (rangeFrom && String(d) < rangeFrom) return false;
+    if (rangeTo && String(d) > rangeTo) return false;
+    return true;
+  }
+  function drawsInRange() {
+    return availableDraws().filter(function (d) { return inDateRange(d.date); });
+  }
   function selectedDraw() {
-    const list = availableDraws();
+    const list = drawsInRange();
     if (!list.length) return null;
     let v = null;
     if (viewDate) v = list.find(function (d) { return d.date === viewDate; });
-    return v || list[0]; // 기본: 최신
+    return v || list[0]; // 기본: 기간 내 최신
   }
 
   // 출석자로 대진 생성 후 대진 탭으로 이동
@@ -136,13 +145,17 @@
 
     if (!sel) {
       curNames = null;
+      const hasAny = availableDraws().length > 0; // 대진은 있으나 기간에 안 걸린 경우
+      const emptyMsg = hasAny
+        ? '선택한 기간에 대진이 없습니다. 기간을 바꾸거나 <b>전체</b>를 누르세요.'
+        : (UI.readonly
+            ? '아직 대진이 없습니다. 관리자가 대진을 만들면 실시간으로 표시됩니다.'
+            : '아직 대진이 없습니다. <b>출석</b> 탭에서 인원을 체크하고 “대진 생성”을 누르거나, 위 <b>대진·결과 업로드</b>로 직접 입력하세요.');
       container.innerHTML =
         '<div class="screen"><div class="screen-head"><h2>대진</h2></div>' +
         dateBar() +
         drawTools() +
-        '<p class="empty">' + (UI.readonly
-              ? '아직 대진이 없습니다. 관리자가 대진을 만들면 실시간으로 표시됩니다.'
-              : '아직 대진이 없습니다. <b>출석</b> 탭에서 인원을 체크하고 “대진 생성”을 누르거나, 위 <b>대진·결과 업로드</b>로 직접 입력하세요.') + '</p>' +
+        (hasAny ? '' : '<p class="empty">' + emptyMsg + '</p>') +
         '</div>';
       bind(container);
       return;
@@ -245,26 +258,38 @@
     return '<p class="muted small score-guide">🎾 기록 기준(1세트): <b>5:5 무승부</b> · 5:5 타이브레이크 승리는 <b>6:5</b> · 6:6 타이브레이크는 <b>7:6</b></p>';
   }
 
-  // 날짜 선택(검색) + 현재 대진 날짜 수정(관리자)
+  // 날짜 기간 검색 + 날짜 선택 + 현재 대진 날짜 수정(관리자)
   function dateBar() {
-    const list = availableDraws();
+    const all = availableDraws();
+    const fallback = S.get().session.date || "";
+    if (!all.length) {
+      return '<div class="draw-date-row"><label>📅 날짜</label><span class="muted small">' + esc(fallback) + '</span></div>';
+    }
+    const list = drawsInRange();
     const sel = selectedDraw();
-    const selDate = sel ? sel.date : (S.get().session.date || "");
-    let html = '<div class="draw-date-row"><label>📅 날짜</label>';
+    const selDate = sel ? sel.date : fallback;
+    // 기간(범위) 검색 행
+    let html = '<div class="draw-date-row date-range"><label>📅 기간</label>' +
+      '<input type="date" class="date-in range-in" id="range-from" value="' + esc(rangeFrom) + '" title="시작일" />' +
+      '<span class="range-sep">~</span>' +
+      '<input type="date" class="date-in range-in" id="range-to" value="' + esc(rangeTo) + '" title="종료일" />' +
+      ((rangeFrom || rangeTo) ? '<button type="button" id="range-clear" class="btn-tiny">전체</button>' : '') +
+      '</div>';
+    // 날짜 선택 드롭다운(기간 내) + 현재 대진 날짜 수정
     if (list.length) {
-      html += '<select id="view-date" class="date-in">' +
+      html += '<div class="draw-date-row"><label>날짜</label>' +
+        '<select id="view-date" class="date-in">' +
         list.map(function (d) {
           return '<option value="' + esc(d.date) + '"' + (d.date === selDate ? ' selected' : '') + '>' +
             esc(d.date) + (d.editable ? ' (현재)' : '') + '</option>';
-        }).join("") + '</select>';
+        }).join("") + '</select>' +
+        ((!UI.readonly && sel && sel.editable)
+          ? '<input type="date" class="date-in" id="draw-date" value="' + esc(selDate) + '" title="현재 대진 날짜 수정" />' : "") +
+        '</div>';
     } else {
-      html += '<span class="muted small">' + esc(selDate) + '</span>';
+      html += '<p class="muted small">선택한 기간에 대진이 없습니다. 기간을 바꾸거나 <b>전체</b>를 누르세요.</p>';
     }
-    // 관리자가 현재(편집 가능) 대진을 보고 있을 때만 날짜 수정 가능
-    if (!UI.readonly && sel && sel.editable) {
-      html += '<input type="date" class="date-in" id="draw-date" value="' + esc(selDate) + '" title="현재 대진 날짜 수정" />';
-    }
-    return html + '</div>';
+    return html;
   }
 
   // 관리자 전용: 대진·결과 다운로드/업로드 (한 행에 대진+점수)
@@ -553,6 +578,13 @@
     bindDrawTools(container);
     const vd = container.querySelector("#view-date");
     if (vd) vd.addEventListener("change", function () { viewDate = vd.value; render(container); });
+    // 기간(날짜 범위) 검색
+    const rf = container.querySelector("#range-from");
+    if (rf) rf.addEventListener("change", function () { rangeFrom = rf.value; viewDate = null; render(container); });
+    const rt = container.querySelector("#range-to");
+    if (rt) rt.addEventListener("change", function () { rangeTo = rt.value; viewDate = null; render(container); });
+    const rc = container.querySelector("#range-clear");
+    if (rc) rc.addEventListener("click", function () { rangeFrom = ""; rangeTo = ""; render(container); });
     const dd = container.querySelector("#draw-date");
     if (dd) dd.addEventListener("change", function () { S.setSessionConfig({ date: dd.value }); });
     const regen = container.querySelector("#regen-btn");
