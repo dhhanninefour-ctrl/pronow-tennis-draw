@@ -11,6 +11,8 @@
   const UI = (global.TennisUI = global.TennisUI || {});
 
   const CLUB_LABEL = { sat: "토요일", sun: "일요일", both: "토·일" };
+  // 트리 펼침 상태(기본 펼침) — 회원 / 게스트
+  const treeOpen = { member: true, guest: true };
 
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -90,11 +92,15 @@
             ' (실시간 공유)</p>' +
         '</div>' +
 
-        '<div class="member-section">' +
-          '<h3>회원 <span class="count-pill">' + roster.length + '</span></h3>' +
-          (roster.length
-            ? '<ul class="att-list">' + roster.map(function (m) { return voteCard(m, !!att[m.id], m.id === UI.memberId); }).join("") + '</ul>'
-            : '<p class="empty">아직 회원이 없습니다.</p>') +
+        '<div class="member-section tree' + (treeOpen.member ? "" : " collapsed") + '" data-tree-sec="member">' +
+          '<h3 class="tree-head" data-act="tree-toggle" data-tree="member">' +
+            '<span class="tree-caret">' + (treeOpen.member ? "▼" : "▶") + '</span> 회원 ' +
+            '<span class="count-pill">' + roster.length + '</span></h3>' +
+          '<div class="tree-body">' +
+            (roster.length
+              ? '<ul class="att-list">' + roster.map(function (m) { return voteCard(m, !!att[m.id], m.id === UI.memberId); }).join("") + '</ul>'
+              : '<p class="empty">아직 회원이 없습니다.</p>') +
+          '</div>' +
         '</div>' +
 
         (canGen
@@ -103,8 +109,11 @@
           : '') +
 
         // ── 게스트 (투표 밑, 댓글형 입력) ──
-        '<div class="member-section guest-zone">' +
-          '<h3>게스트 직접 추가 <span class="count-pill pill-guest">' + guests.length + '</span></h3>' +
+        '<div class="member-section guest-zone tree' + (treeOpen.guest ? "" : " collapsed") + '" data-tree-sec="guest">' +
+          '<h3 class="tree-head" data-act="tree-toggle" data-tree="guest">' +
+            '<span class="tree-caret">' + (treeOpen.guest ? "▼" : "▶") + '</span> 게스트 직접 추가 ' +
+            '<span class="count-pill pill-guest">' + guests.length + '</span></h3>' +
+          '<div class="tree-body">' +
           '<form class="add-row guest-form" id="guest-form">' +
             '<input type="text" id="g-name" placeholder="게스트 이름을 적어 추가하세요" autocomplete="off" maxlength="20" />' +
             '<select id="g-gender" class="type-select"><option value="">성별</option><option value="M">남</option><option value="F">여</option></select>' +
@@ -116,6 +125,7 @@
           (guests.length
             ? '<ul class="guest-comments">' + guests.map(function (m) { return guestComment(m, !!att[m.id]); }).join("") + '</ul>'
             : '<p class="empty">아직 게스트가 없습니다. 위에 이름을 적어 추가하세요.</p>') +
+          '</div>' +
         '</div>' +
       '</div>';
 
@@ -123,6 +133,17 @@
   }
 
   function bind(container) {
+    // 트리 접기/펼치기 (회원 / 게스트)
+    container.querySelectorAll('[data-act="tree-toggle"]').forEach(function (h) {
+      h.addEventListener("click", function () {
+        const type = h.getAttribute("data-tree");
+        treeOpen[type] = !treeOpen[type];
+        const sec = container.querySelector('[data-tree-sec="' + type + '"]');
+        const caret = h.querySelector('.tree-caret');
+        if (sec) sec.classList.toggle("collapsed", !treeOpen[type]);
+        if (caret) caret.textContent = treeOpen[type] ? "▼" : "▶";
+      });
+    });
     // 날짜 설정 (회원도 변경 가능, 실시간 공유)
     const dateIn = container.querySelector("#att-date");
     if (dateIn) dateIn.addEventListener("change", function () {
