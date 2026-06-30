@@ -24,7 +24,7 @@
   function newSession() {
     return {
       id: uid(), date: todayStr(), mode: "doubles", courts: 2,
-      rounds: 5, seed: 1, scoring: false, attendance: {}, generated: null
+      rounds: 5, seed: 1, scoring: false, attendance: {}, times: {}, generated: null
     };
   }
 
@@ -317,6 +317,15 @@
     state.session.attendance[id] = !!present;
     commit();
   }
+  // 출퇴근 시간 기록 (field: 'in' 출근 / 'out' 퇴근)
+  function setMemberTime(id, field, value) {
+    if (!state.session.times) state.session.times = {};
+    if (!state.session.times[id]) state.session.times[id] = {};
+    if (value) state.session.times[id][field] = value;
+    else delete state.session.times[id][field];
+    commit();
+  }
+
   function presentMembers() {
     const att = state.session.attendance;
     return clubMembers(activeClub).filter(function (m) { return att[m.id]; });
@@ -415,6 +424,7 @@
     drawPermitIds: drawPermitIds,
     canGenerateDraw: canGenerateDraw,
     setDrawPermit: setDrawPermit,
+    setMemberTime: setMemberTime,
     addMember: addMember,
     requestSignup: requestSignup,
     setMemberClub: setMemberClub,

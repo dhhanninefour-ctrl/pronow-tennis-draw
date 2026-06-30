@@ -38,27 +38,48 @@
     const t = skillText(m);
     return t ? '<span class="ntrp-badge">' + t + '</span>' : "";
   }
+  function fmtNow() {
+    const d = new Date();
+    return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+  // 출퇴근(출근/퇴근) 시간 입력 — 출석한 사람만 표시
+  function timeControls(id) {
+    const t = (S.get().session.times || {})[id] || {};
+    return '<div class="time-row" data-id="' + id + '">' +
+      '<span class="time-lbl">🟢 출근</span>' +
+      '<input type="time" class="time-in" data-field="in" value="' + (t.in || "") + '" />' +
+      '<button type="button" class="time-now btn-tiny" data-field="in">지금</button>' +
+      '<span class="time-lbl">🔴 퇴근</span>' +
+      '<input type="time" class="time-in" data-field="out" value="' + (t.out || "") + '" />' +
+      '<button type="button" class="time-now btn-tiny" data-field="out">지금</button>' +
+    '</div>';
+  }
 
-  // 회원 카드: 본인(mine)만 토글 가능, 나머지는 읽기 전용
+  // 회원 카드: 본인(mine)만 토글 가능, 나머지는 읽기 전용. 출석 시 출퇴근 시간 표시.
   function voteCard(m, present, mine) {
-    return '<li class="att-card ' + (present ? "on " : "") + (mine ? "mine" : "locked") + '"' +
-      (mine ? ' data-id="' + m.id + '" data-act="vote"' : '') + '>' +
-      '<span class="check">' + (present ? "✅" : "⬜") + '</span>' +
-      '<span class="member-name">' + esc(m.name) + (mine ? ' <span class="badge badge-regular">나</span>' : '') + '</span>' +
-      genderBadge(m) + skillBadge(m) +
+    return '<li class="att-card ' + (present ? "on " : "") + (mine ? "mine" : "locked") + '" data-id="' + m.id + '">' +
+      '<div class="att-main"' + (mine ? ' data-act="vote" data-id="' + m.id + '"' : '') + '>' +
+        '<span class="check">' + (present ? "✅" : "⬜") + '</span>' +
+        '<span class="member-name">' + esc(m.name) + (mine ? ' <span class="badge badge-regular">나</span>' : '') + '</span>' +
+        genderBadge(m) + skillBadge(m) +
+      '</div>' +
+      (present ? timeControls(m.id) : "") +
     '</li>';
   }
 
-  // 게스트 = 댓글 카드 (✅ 토글 + 메타 + ✕ 삭제)
+  // 게스트 = 댓글 카드 (✅ 토글 + 메타 + ✕ 삭제). 출석 시 출퇴근 시간 표시.
   function guestComment(m, present) {
     const meta = [m.gender === "F" ? "여" : m.gender === "M" ? "남" : "", skillText(m)].filter(Boolean).join(" · ");
     return '<li class="guest-comment ' + (present ? "on" : "") + '" data-id="' + m.id + '">' +
-      '<span class="gc-check" data-act="vote" data-id="' + m.id + '">' + (present ? "✅" : "⬜") + '</span>' +
-      '<div class="gc-body">' +
-        '<div class="gc-name">' + esc(m.name) + ' <span class="badge badge-guest">게스트</span></div>' +
-        (meta ? '<div class="gc-meta muted small">' + esc(meta) + '</div>' : '') +
+      '<div class="gc-row">' +
+        '<span class="gc-check" data-act="vote" data-id="' + m.id + '">' + (present ? "✅" : "⬜") + '</span>' +
+        '<div class="gc-body">' +
+          '<div class="gc-name">' + esc(m.name) + ' <span class="badge badge-guest">게스트</span></div>' +
+          (meta ? '<div class="gc-meta muted small">' + esc(meta) + '</div>' : '') +
+        '</div>' +
+        '<button class="gc-del" data-act="del" data-id="' + m.id + '" title="삭제">✕</button>' +
       '</div>' +
-      '<button class="gc-del" data-act="del" data-id="' + m.id + '" title="삭제">✕</button>' +
+      (present ? timeControls(m.id) : "") +
     '</li>';
   }
 
@@ -163,6 +184,26 @@
         S.toggleAttendance(li.getAttribute("data-id"));
         pushShared();
         render(container);
+      });
+    });
+    // 출퇴근 시간: 직접 입력 / "지금" 버튼
+    container.querySelectorAll(".time-in").forEach(function (inp) {
+      inp.addEventListener("click", function (e) { e.stopPropagation(); });
+      inp.addEventListener("change", function () {
+        const row = inp.closest(".time-row");
+        S.setMemberTime(row.getAttribute("data-id"), inp.getAttribute("data-field"), inp.value);
+        pushShared();
+      });
+    });
+    container.querySelectorAll(".time-now").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const row = btn.closest(".time-row");
+        const id = row.getAttribute("data-id"), field = btn.getAttribute("data-field"), now = fmtNow();
+        const input = row.querySelector('.time-in[data-field="' + field + '"]');
+        if (input) input.value = now;
+        S.setMemberTime(id, field, now);
+        pushShared();
       });
     });
     // 게스트 댓글: ✅ 토글

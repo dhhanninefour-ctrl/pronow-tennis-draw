@@ -325,6 +325,27 @@ html, body {
   cursor: pointer; font-weight: 800; font-size: 15px; color: var(--ink); user-select: none;
 }
 .pl-chip.sel { background: var(--accent); border-color: var(--accent); }
+
+/* 출퇴근 시간 기록 (참석자) */
+.att-card { flex-wrap: wrap; }
+.att-main { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; cursor: pointer; }
+.att-card.locked .att-main { cursor: default; }
+.guest-comment { flex-direction: column; align-items: stretch; }
+.gc-row { display: flex; align-items: center; gap: 10px; }
+.time-row {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap; width: 100%;
+  margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line);
+}
+.time-lbl { font-size: 12px; font-weight: 800; color: var(--ink-soft); }
+.time-in {
+  font-family: inherit; font-size: 14px; padding: 6px 8px;
+  border: 1px solid var(--line-strong); border-radius: 8px; background: #fff;
+}
+.btn-tiny {
+  font-size: 12px; padding: 6px 10px; border: 1px solid var(--line-strong);
+  background: var(--surface); border-radius: 8px; cursor: pointer; font-weight: 700; color: var(--ink-soft);
+}
+.btn-tiny:hover { background: var(--line); }
 .add-row input[type="text"]:focus { border-color: var(--ink); background: #fff; }
 .type-select {
   font-family: inherit;
