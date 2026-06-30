@@ -11,6 +11,7 @@
   const UI = (global.TennisUI = global.TennisUI || {});
 
   const expanded = {}; // recordId -> bool
+  let drawOnly = false; // 대진만 보기 모드
 
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -153,9 +154,13 @@
 
         (hist.length === 0
           ? '<p class="empty">아직 저장된 모임이 없습니다.</p>'
-          : ('<div class="hist-toolbar"><button id="expand-all" class="btn btn-ghost btn-sm">' +
-              (allOpen(hist) ? "모두 접기" : "모두 펼치기") + '</button></div>' +
-             '<div class="hist-list">' + hist.map(card).join("") + '</div>')) +
+          : ('<div class="hist-toolbar">' +
+               '<button id="draw-only-toggle" class="btn ' + (drawOnly ? "btn-primary" : "btn-ghost") + ' btn-sm">' +
+                 (drawOnly ? "📋 전체 보기" : "🎾 대진만 보기") + '</button>' +
+               (drawOnly ? "" : '<button id="expand-all" class="btn btn-ghost btn-sm">' +
+                 (allOpen(hist) ? "모두 접기" : "모두 펼치기") + '</button>') +
+             '</div>' +
+             '<div class="hist-list' + (drawOnly ? " draw-only" : "") + '">' + hist.map(card).join("") + '</div>')) +
       '</div>';
 
     bind(container);
@@ -164,11 +169,11 @@
   function allOpen(hist) { return hist.length > 0 && hist.every(function (h) { return expanded[h.id]; }); }
 
   function card(h) {
-    const open = !!expanded[h.id];
+    const open = drawOnly || !!expanded[h.id];
     const modeLabel = h.mode === "singles" ? "단식" : "복식";
     const players = Object.keys(h.names || {}).length;
-    const detail = open ? recordDetail(h) : "";
-    return '<div class="hist-card" data-id="' + h.id + '">' +
+    const detail = open ? recordDetail(h, drawOnly) : "";
+    return '<div class="hist-card' + (drawOnly ? " draw-only" : "") + '" data-id="' + h.id + '">' +
       '<div class="hist-head">' +
         '<div class="hist-meta">' +
           (UI.readonly
@@ -176,7 +181,7 @@
             : '<input type="date" class="date-in hist-date-in" data-id="' + h.id + '" value="' + esc(h.date) + '" title="날짜 수정" />') +
           '<div class="muted small">' + modeLabel + ' · ' + players + '명 · ' + (h.generated.rounds.length) + '라운드</div>' +
         '</div>' +
-        '<button class="btn btn-ghost hist-toggle" data-id="' + h.id + '">' + (open ? "접기" : "대진·결과") + '</button>' +
+        (drawOnly ? "" : '<button class="btn btn-ghost hist-toggle" data-id="' + h.id + '">' + (open ? "접기" : "대진·결과") + '</button>') +
         (UI.readonly ? "" : '<button class="icon-btn hist-del" data-id="' + h.id + '" title="삭제">🗑</button>') +
       '</div>' +
       detail +
@@ -185,10 +190,11 @@
 
   function winRate(r) { const t = r.wins + r.losses; return t > 0 ? Math.round((r.wins / t) * 100) : 0; }
 
-  function recordDetail(h) {
+  function recordDetail(h, drawOnlyMode) {
     let html = "";
-    // 인원 + 출퇴근 (업로드/기록된 경우)
+    // 인원 + 출퇴근 (업로드/기록된 경우) — '대진만 보기'에서는 생략
     const times = h.times || {};
+    if (!drawOnlyMode) {
     const hasTimes = Object.keys(times).length > 0;
     const attIds = (h.attendance && Object.keys(h.attendance).length)
       ? Object.keys(h.attendance).filter(function (id) { return h.attendance[id]; })
@@ -222,21 +228,31 @@
           '<table class="rank-table compact"><thead><tr><th>#</th><th>이름</th><th>경기</th><th>승·무·패</th><th>승률</th><th>득실</th></tr></thead><tbody>' + trs + '</tbody></table>';
       }
     }
+    } // end !drawOnlyMode
     // 라운드별 대진 (과거 대진)
+    const stepMin = h.roundMinutes || 30;
     html += '<div class="hist-sub">🎾 대진</div>';
-    html += '<div class="hist-rounds">' + h.generated.rounds.map(function (rd) {
+    html += '<div class="hist-rounds">' + h.generated.rounds.map(function (rd, ri) {
+      const rt = (h.startTime && S.roundTime) ? S.roundTime(h.startTime, ri, stepMin) : "";
       const ms = rd.matches.map(function (m) {
         const score = (m.scoreA != null && m.scoreB != null) ? ' <b>' + m.scoreA + ':' + m.scoreB + '</b>' : '';
-        return '<div class="hist-match">코트' + m.court + ' · ' + namesFrom(h.names, m.teamA) +
-          ' vs ' + namesFrom(h.names, m.teamB) + score + '</div>';
+        return '<div class="hist-match"><span class="hist-court">코트' + m.court + '</span> ' + namesFrom(h.names, m.teamA) +
+          ' <span class="vs">vs</span> ' + namesFrom(h.names, m.teamB) + score + '</div>';
       }).join("");
       const bye = (rd.byes && rd.byes.length) ? '<div class="hist-bye">휴식 · ' + namesFrom(h.names, rd.byes) + '</div>' : '';
-      return '<div class="hist-round"><div class="hist-round-title">R' + rd.roundNo + '</div>' + ms + bye + '</div>';
+      const rtLabel = rt ? ' <span class="hist-round-time">🕐 ' + esc(rt) + '</span>' : "";
+      return '<div class="hist-round"><div class="hist-round-title">R' + rd.roundNo + rtLabel + '</div>' + ms + bye + '</div>';
     }).join("") + '</div>';
     return '<div class="hist-detail">' + html + '</div>';
   }
 
   function bind(container) {
+    const dot = container.querySelector("#draw-only-toggle");
+    if (dot) dot.addEventListener("click", function () {
+      drawOnly = !drawOnly;
+      render(container);
+    });
+
     const down = container.querySelector("#hist-down");
     if (down) down.addEventListener("click", function () {
       const rows = historyExportRows();
