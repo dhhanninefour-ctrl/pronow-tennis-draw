@@ -638,6 +638,8 @@ html, body {
 .hist-detail .btn-lg { margin-top: 0; }
 .hist-sub { font-size: 13px; font-weight: 800; color: var(--ink-soft); margin: 14px 0 6px; }
 .hist-toolbar { display: flex; justify-content: flex-end; gap: 8px; margin: 14px 0 6px; }
+.hist-current { border-color: var(--brand, #2563eb); box-shadow: 0 0 0 1px var(--brand, #2563eb) inset; }
+.cur-badge { display: inline-block; font-size: 11px; font-weight: 800; color: var(--brand, #2563eb); margin-left: 4px; vertical-align: middle; }
 .hist-court { display: inline-block; min-width: 44px; font-size: 11px; font-weight: 800; color: var(--muted); background: var(--bg, #f3f4f6); border-radius: 6px; padding: 1px 6px; margin-right: 4px; }
 .hist-match .vs { font-size: 11px; font-weight: 700; color: var(--muted); margin: 0 2px; }
 .hist-round-time { font-weight: 700; letter-spacing: 0; color: var(--brand, #2563eb); margin-left: 6px; }

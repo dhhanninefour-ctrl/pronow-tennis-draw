@@ -389,6 +389,18 @@
     }
     return map;
   }
+  // 현재 진행 중인 세션을 기록(record) 형태로 반환 — 기록 탭에서 '현재 모임'으로 미리보기
+  function sessionRecord() {
+    const s = state.session;
+    if (!s.generated || !s.generated.rounds || s.generated.rounds.length === 0) return null;
+    return {
+      id: "__current__", date: s.date, mode: s.mode, courts: s.courts, rounds: s.rounds,
+      scoring: s.scoring, generated: clone(s.generated),
+      names: Object.assign(namesForGenerated(s.generated), (s.generated.names || {})),
+      times: clone(s.times || {}), attendance: clone(s.attendance || {}),
+      startTime: s.startTime, endTime: s.endTime, isCurrent: true
+    };
+  }
   function archiveSession() {
     const s = state.session;
     if (!s.generated || !s.generated.rounds || s.generated.rounds.length === 0) return false;
@@ -526,6 +538,7 @@
     setSessionConfig: setSessionConfig,
     setGenerated: setGenerated,
     archiveSession: archiveSession,
+    sessionRecord: sessionRecord,
     deleteHistory: deleteHistory,
     setHistoryDate: setHistoryDate,
     addHistoryRecord: addHistoryRecord,

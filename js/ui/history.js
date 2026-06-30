@@ -133,7 +133,10 @@
 
   function render(container) {
     const st = S.get();
-    const hist = st.history || [];
+    const saved = st.history || [];
+    // 현재 진행 중인 대진도 '현재 모임'으로 맨 위에 미리보기 (저장 전이라도 날짜·라운드별로 확인)
+    const cur = S.sessionRecord ? S.sessionRecord() : null;
+    const hist = cur ? [cur].concat(saved) : saved;
     const ro = !!UI.readonly;
     const canSave = !ro && !!(st.session.generated && st.session.generated.rounds && st.session.generated.rounds.length);
 
@@ -145,7 +148,7 @@
     container.innerHTML =
       '<div class="screen">' +
         '<div class="screen-head">' +
-          '<h2>기록 <span class="count-pill">' + hist.length + '회</span></h2>' +
+          '<h2>기록 <span class="count-pill">' + saved.length + '회</span></h2>' +
           '<p class="muted">' + (ro ? '지난 모임 결과를 볼 수 있습니다.' : '모임이 끝나면 저장하세요. 누적 순위는 <b>순위 → 시즌 누적</b>에서 봅니다.') + '</p>' +
         '</div>' +
 
@@ -173,16 +176,19 @@
     const modeLabel = h.mode === "singles" ? "단식" : "복식";
     const players = Object.keys(h.names || {}).length;
     const detail = open ? recordDetail(h, drawOnly) : "";
-    return '<div class="hist-card' + (drawOnly ? " draw-only" : "") + '" data-id="' + h.id + '">' +
+    const dateCell = h.isCurrent
+      ? '<div class="hist-date">' + esc(h.date) + ' <span class="cur-badge">🔴 현재 모임 · 저장 전</span></div>'
+      : (UI.readonly
+          ? '<div class="hist-date">' + esc(h.date) + '</div>'
+          : '<input type="date" class="date-in hist-date-in" data-id="' + h.id + '" value="' + esc(h.date) + '" title="날짜 수정" />');
+    return '<div class="hist-card' + (drawOnly ? " draw-only" : "") + (h.isCurrent ? " hist-current" : "") + '" data-id="' + h.id + '">' +
       '<div class="hist-head">' +
         '<div class="hist-meta">' +
-          (UI.readonly
-            ? '<div class="hist-date">' + esc(h.date) + '</div>'
-            : '<input type="date" class="date-in hist-date-in" data-id="' + h.id + '" value="' + esc(h.date) + '" title="날짜 수정" />') +
+          dateCell +
           '<div class="muted small">' + modeLabel + ' · ' + players + '명 · ' + (h.generated.rounds.length) + '라운드</div>' +
         '</div>' +
         (drawOnly ? "" : '<button class="btn btn-ghost hist-toggle" data-id="' + h.id + '">' + (open ? "접기" : "대진·결과") + '</button>') +
-        (UI.readonly ? "" : '<button class="icon-btn hist-del" data-id="' + h.id + '" title="삭제">🗑</button>') +
+        (UI.readonly || h.isCurrent ? "" : '<button class="icon-btn hist-del" data-id="' + h.id + '" title="삭제">🗑</button>') +
       '</div>' +
       detail +
     '</div>';
