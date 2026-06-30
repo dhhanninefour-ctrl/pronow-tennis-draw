@@ -273,6 +273,25 @@ html, body {
 .guest-form .type-select { flex: 1 1 auto; min-width: 78px; font-size: 14px; padding: 10px; }
 .guest-form .num-narrow { flex: 0 0 92px; width: 92px; }
 .guest-form .btn { flex: 0 0 auto; }
+
+/* 게스트 댓글형 목록 (투표 밑) */
+.guest-zone { background: var(--surface); border-radius: var(--radius-sm); padding: 12px; }
+.guest-comments { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.guest-comment {
+  display: flex; align-items: center; gap: 10px;
+  background: #fff; border: 1px solid var(--line); border-radius: 12px;
+  padding: 10px 12px;
+}
+.guest-comment.on { border-color: var(--accent); background: #f8fdef; }
+.gc-check { font-size: 18px; cursor: pointer; flex: 0 0 auto; }
+.gc-body { flex: 1 1 auto; min-width: 0; }
+.gc-name { font-weight: 700; color: var(--ink); }
+.gc-meta { margin-top: 2px; }
+.gc-del {
+  flex: 0 0 auto; border: none; background: transparent; cursor: pointer;
+  color: var(--ink-soft); font-size: 15px; padding: 4px 6px; border-radius: 8px;
+}
+.gc-del:hover { background: var(--line); color: var(--ink); }
 .add-row input[type="text"]:focus { border-color: var(--ink); background: #fff; }
 .type-select {
   font-family: inherit;
