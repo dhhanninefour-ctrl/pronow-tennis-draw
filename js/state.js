@@ -282,6 +282,18 @@
     state.room.adminPw = String(pw);
     commit();
   }
+
+  // ── 대진 생성 권한 (관리자가 특정 회원에게 부여) ──
+  function drawPermitIds() { return (state.room && state.room.drawPermitIds) || []; }
+  function canGenerateDraw(memberId) { return !!memberId && drawPermitIds().indexOf(memberId) >= 0; }
+  function setDrawPermit(id, on) {
+    if (!state.room.drawPermitIds) state.room.drawPermitIds = [];
+    const arr = state.room.drawPermitIds;
+    const i = arr.indexOf(id);
+    if (on && i < 0) arr.push(id);
+    if (!on && i >= 0) arr.splice(i, 1);
+    commit();
+  }
   function addRepAdmin(name, loginId, loginPw, scope) {
     const r = {
       id: uid(), name: (name || "").trim() || "대표관리자",
@@ -400,6 +412,9 @@
     setActiveClub: setActiveClub,
     parseNtrp: parseNtrp,
     effectiveNtrp: effectiveNtrp,
+    drawPermitIds: drawPermitIds,
+    canGenerateDraw: canGenerateDraw,
+    setDrawPermit: setDrawPermit,
     addMember: addMember,
     requestSignup: requestSignup,
     setMemberClub: setMemberClub,

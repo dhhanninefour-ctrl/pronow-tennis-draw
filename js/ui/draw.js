@@ -74,6 +74,10 @@
 
     S.setSessionConfig({ seed: seed });
     S.setGenerated(result);
+    // 회원(권한자)이 생성해도 클라우드에 반영
+    if (global.TennisSync && global.TennisSync.getMode && global.TennisSync.getMode() === "cloud") {
+      global.TennisSync.memberPush();
+    }
     if (UI.go) UI.go("draw");
   }
 

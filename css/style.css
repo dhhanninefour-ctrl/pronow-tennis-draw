@@ -292,6 +292,12 @@ html, body {
   color: var(--ink-soft); font-size: 15px; padding: 4px 6px; border-radius: 8px;
 }
 .gc-del:hover { background: var(--line); color: var(--ink); }
+
+/* 대진 생성 권한 부여된 회원 표시 (🎾) */
+.icon-btn.permit-on { background: var(--accent); border-radius: 8px; }
+
+/* 회원(권한자) 대진 생성 버튼 */
+.member-gen { margin: 12px 0; }
 .add-row input[type="text"]:focus { border-color: var(--ink); background: #fff; }
 .type-select {
   font-family: inherit;

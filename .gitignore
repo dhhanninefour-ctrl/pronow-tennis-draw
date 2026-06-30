@@ -21,3 +21,9 @@ supabase/.temp/
 # config.js
 
 .vercel
+
+# 참조 이미지 (커밋 안 함)
+*.png
+*.PNG
+*.jpg
+*.jpeg

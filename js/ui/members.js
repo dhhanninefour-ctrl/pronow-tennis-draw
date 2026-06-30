@@ -53,7 +53,7 @@
       '<div class="screen">' +
         '<div class="screen-head">' +
           '<h2>' + clubFull + ' 회원 <span class="count-pill">' + members.length + '명</span></h2>' +
-          '<p class="muted"><b>' + clubFull + ' 클럽</b> 회원만 표시됩니다. 클럽칩(토·일·둘다)을 눌러 소속을 바꾸면 해당 클럽으로 이동합니다. (다른 클럽은 상단 클럽 전환으로 관리)</p>' +
+          '<p class="muted"><b>' + clubFull + ' 클럽</b> 회원만 표시됩니다. 클럽칩(토·일·둘다)으로 소속 변경, <b>🎾</b>를 눌러 <b>대진 생성 권한</b>을 부여/해제할 수 있습니다. (권한 회원은 앱 참석자 화면에서 대진을 만들 수 있어요)</p>' +
         '</div>' +
 
         '<div class="excel-row">' +
@@ -114,6 +114,7 @@
         clubChip(m) +
         '<span class="badge ' + (m.type === "guest" ? "badge-guest" : "badge-regular") + '">' +
           (m.type === "guest" ? "게스트" : "정기") + '</span>' +
+        '<button class="icon-btn' + (S.canGenerateDraw(m.id) ? ' permit-on' : '') + '" data-act="permit" title="대진 생성 권한 부여/해제">🎾</button>' +
         '<button class="icon-btn" data-act="edit" title="정보 수정">✏️</button>' +
         '<button class="icon-btn" data-act="toggle" title="정기/게스트 전환">🔁</button>' +
         '<button class="icon-btn" data-act="del" title="삭제">🗑</button>' +
@@ -212,6 +213,10 @@
       const toggleBtn = card.querySelector('[data-act="toggle"]');
       const delBtn = card.querySelector('[data-act="del"]');
       const clubBtn = card.querySelector('[data-act="club"]');
+      const permitBtn = card.querySelector('[data-act="permit"]');
+      if (permitBtn) permitBtn.addEventListener("click", function () {
+        S.setDrawPermit(id, !S.canGenerateDraw(id));
+      });
       if (clubBtn) clubBtn.addEventListener("click", function () {
         const m = S.activeMembers().find(function (x) { return x.id === id; });
         if (m) S.setMemberClub(id, nextClub(clubOf(m)));

@@ -74,11 +74,16 @@
     const guests = S.clubMembers(club).filter(function (m) { return m.type === "guest"; });
     const present = S.presentMembers();
 
+    const canGen = !!(UI.memberId && S.canGenerateDraw(UI.memberId));
+    const need = (st.session.mode === "singles") ? 2 : 4;
+
     container.innerHTML =
       '<div class="screen">' +
         '<div class="screen-head">' +
           '<h2>참석자 <span class="count-pill accent">' + present.length + '명</span></h2>' +
-          '<p class="muted">📅 <b>' + esc(date) + '</b> · ' + clubLabel + ' 클럽 — 참석하면 이름을 눌러 ✅ 표시하세요. (실시간 공유)</p>' +
+          '<div class="draw-date-row"><label>📅 날짜</label>' +
+            '<input type="date" class="date-in" id="att-date" value="' + esc(date) + '" /></div>' +
+          '<p class="muted small">' + clubLabel + ' 클럽 — 참석하면 이름을 눌러 ✅ 표시하세요. (실시간 공유)</p>' +
         '</div>' +
 
         '<div class="member-section">' +
@@ -87,6 +92,11 @@
             ? '<ul class="att-list">' + roster.map(function (m) { return voteCard(m, !!att[m.id]); }).join("") + '</ul>'
             : '<p class="empty">아직 회원이 없습니다.</p>') +
         '</div>' +
+
+        (canGen
+          ? '<button id="member-gen" class="btn btn-primary btn-lg member-gen"' + (present.length < need ? ' disabled' : '') + '>' +
+              '🎾 대진 생성 →' + (present.length < need ? ' (' + need + '명 이상)' : '') + '</button>'
+          : '') +
 
         // ── 게스트 (투표 밑, 댓글형 입력) ──
         '<div class="member-section guest-zone">' +
@@ -109,6 +119,19 @@
   }
 
   function bind(container) {
+    // 날짜 설정 (회원도 변경 가능, 실시간 공유)
+    const dateIn = container.querySelector("#att-date");
+    if (dateIn) dateIn.addEventListener("change", function () {
+      S.setSessionConfig({ date: dateIn.value });
+      pushShared();
+      render(container);
+    });
+    // 권한자 대진 생성
+    const gen = container.querySelector("#member-gen");
+    if (gen) gen.addEventListener("click", function () {
+      if (gen.disabled) return;
+      if (UI.draw && UI.draw.generateAndGo) UI.draw.generateAndGo(false);
+    });
     // 회원 투표 토글
     container.querySelectorAll('.att-list [data-act="vote"]').forEach(function (li) {
       li.addEventListener("click", function () {
