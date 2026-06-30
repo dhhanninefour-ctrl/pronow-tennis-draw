@@ -106,7 +106,7 @@
     const need = (st.session.mode === "singles") ? 2 : 4;
 
     container.innerHTML =
-      '<div class="screen">' +
+      '<div class="screen attendees">' +
         '<div class="screen-head">' +
           '<h2>참석자 <span class="count-pill accent">' + present.length + '명</span></h2>' +
           '<div class="draw-date-row"><label>📅 날짜</label>' +

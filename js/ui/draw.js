@@ -67,6 +67,12 @@
   function names(ids) {
     return ids.map(nameOf).map(esc).join(" / ");
   }
+  // 중복 id 제거(휴식 명단이 중복 저장된 경우 표시 정리)
+  function uniq(ids) {
+    const seen = {}, out = [];
+    (ids || []).forEach(function (id) { if (id != null && !seen[id]) { seen[id] = 1; out.push(id); } });
+    return out;
+  }
 
   // 날짜별로 볼 수 있는 대진 목록: 현재 진행 대진 + 지난 기록(날짜별)
   function availableDraws() {
@@ -153,11 +159,25 @@
     const editing = canEdit && editMode;
 
     const roundsHtml = gen.rounds.map(function (rd, rIdx) {
-      const matchesHtml = rd.matches.map(function (m, idx) {
-        return matchCard(rd.roundNo, idx, m, scoring, editable, editing, rIdx);
-      }).join("");
-      const byeHtml = rd.byes && rd.byes.length
-        ? '<div class="bye-row">휴식 · ' + (editing ? byeChips(rd.byes, rIdx) : names(rd.byes)) + '</div>' : "";
+      let body;
+      if (editing) {
+        // 수정 모드: 칩 스왑용 큰 카드 유지
+        const matchesHtml = rd.matches.map(function (m, idx) {
+          return matchCard(rd.roundNo, idx, m, scoring, editable, editing, rIdx);
+        }).join("");
+        const byeHtml = rd.byes && rd.byes.length
+          ? '<div class="bye-row">휴식 · ' + byeChips(rd.byes, rIdx) + '</div>' : "";
+        body = '<div class="court-grid">' + matchesHtml + '</div>' + byeHtml;
+      } else {
+        // 기본: 기록 탭처럼 한 줄 컴팩트 표시 (코트 · A vs B · 점수)
+        const matchesHtml = rd.matches.map(function (m, idx) {
+          return compactMatch(rd.roundNo, idx, m, scoring, editable);
+        }).join("");
+        const byeU = uniq(rd.byes);
+        const byeHtml = byeU.length
+          ? '<div class="dv-bye">휴식 · ' + names(byeU) + '</div>' : "";
+        body = '<div class="dv-matches">' + matchesHtml + byeHtml + '</div>';
+      }
       const rtime = editable ? S.roundTime(st.session.startTime, rIdx, 30) : "";
       const open = roundOpen[rd.roundNo] !== false; // 기본 펼침
       return '<div class="round-block tree' + (open ? "" : " collapsed") + '" data-round-sec="' + rd.roundNo + '">' +
@@ -166,8 +186,7 @@
           (rtime ? ' <span class="round-time">🕐 ' + rtime + '</span>' : "") +
           ' <span class="muted small round-count">' + rd.matches.length + '코트</span></div>' +
         '<div class="tree-body">' +
-          '<div class="court-grid">' + matchesHtml + '</div>' +
-          byeHtml +
+          body +
         '</div>' +
       '</div>';
     }).join("");
@@ -302,6 +321,34 @@
       '<div class="team ' + (win === "A" ? "win" : "") + '">' + names(m.teamA) + '</div>' +
       '<div class="vs">VS</div>' +
       '<div class="team ' + (win === "B" ? "win" : "") + '">' + names(m.teamB) + '</div>' +
+      scoreHtml +
+    '</div>';
+  }
+
+  // 기록 탭 스타일의 한 줄 컴팩트 매치 (점수 입력/읽기 모두 지원)
+  function compactMatch(roundNo, idx, m, scoring, editable) {
+    const win = winnerSide(m);
+    let scoreHtml = "";
+    if (scoring && editable) {
+      const dis = canEditScore(m) ? "" : " disabled";
+      scoreHtml = '<span class="dv-score">' +
+          '<input class="score-in dv-in" type="number" inputmode="numeric" min="0" max="99"' + dis + ' ' +
+            'data-round="' + roundNo + '" data-match="' + idx + '" data-side="A" ' +
+            'value="' + (m.scoreA == null ? "" : m.scoreA) + '" placeholder="-" />' +
+          '<span class="score-sep">:</span>' +
+          '<input class="score-in dv-in" type="number" inputmode="numeric" min="0" max="99"' + dis + ' ' +
+            'data-round="' + roundNo + '" data-match="' + idx + '" data-side="B" ' +
+            'value="' + (m.scoreB == null ? "" : m.scoreB) + '" placeholder="-" />' +
+        '</span>';
+    } else if (scoring) {
+      scoreHtml = '<span class="dv-score-ro">' + (m.scoreA == null ? "-" : m.scoreA) +
+        ':' + (m.scoreB == null ? "-" : m.scoreB) + '</span>';
+    }
+    return '<div class="dv-match">' +
+      '<span class="dv-court">코트' + m.court + '</span>' +
+      '<span class="dv-team' + (win === "A" ? " win" : "") + '">' + names(m.teamA) + '</span>' +
+      '<span class="dv-vs">vs</span>' +
+      '<span class="dv-team' + (win === "B" ? " win" : "") + '">' + names(m.teamB) + '</span>' +
       scoreHtml +
     '</div>';
   }

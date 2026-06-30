@@ -19,7 +19,9 @@
     });
   }
   function namesFrom(map, ids) {
-    return (ids || []).map(function (id) { return esc(map[id] || "?"); }).join(" / ");
+    const seen = {};
+    return (ids || []).filter(function (id) { if (id == null || seen[id]) return false; seen[id] = 1; return true; })
+      .map(function (id) { return esc(map[id] || "?"); }).join(" / ");
   }
   function plainNames(map, ids) {
     return (ids || []).map(function (id) { return map[id] || "?"; }).join(" / ");

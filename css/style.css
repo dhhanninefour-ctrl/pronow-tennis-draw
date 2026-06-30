@@ -349,6 +349,23 @@ html, body {
 .stay-badge { font-size: 12px; font-weight: 800; color: var(--ink); background: var(--accent); padding: 4px 9px; border-radius: 8px; margin-left: auto; }
 .round-time { font-size: 12px; font-weight: 800; color: var(--ink-soft); margin-left: 6px; }
 
+/* ── 참석자 탭 컴팩트 보기 (회원 앱 전용) ──────────────────────────────── */
+.attendees .att-list, .attendees .guest-comments { gap: 6px; margin-top: 8px; }
+.attendees .att-card { padding: 8px 11px; gap: 9px; border-width: 1px; }
+.attendees .att-card .check { font-size: 17px; }
+.attendees .att-main { gap: 7px; }
+.attendees .member-name { font-size: 14px; }
+.attendees .guest-comment { padding: 8px 11px; }
+.attendees .gc-check { font-size: 16px; }
+.attendees .gc-name { font-size: 14px; }
+.attendees .gc-meta { margin-top: 1px; }
+.attendees .badge, .attendees .ntrp-badge { font-size: 10.5px; padding: 2px 7px; }
+.attendees .time-row { margin-top: 6px; padding-top: 6px; gap: 5px; }
+.attendees .time-lbl { font-size: 11px; }
+.attendees .time-in { font-size: 13px; padding: 4px 6px; }
+.attendees .btn-tiny { font-size: 11px; padding: 4px 8px; }
+.attendees .stay-badge { font-size: 11px; padding: 3px 8px; }
+
 /* 게스트 날짜별 그룹 (회원 관리) */
 .guest-date-group { margin-bottom: 10px; }
 .guest-date-head {
@@ -548,6 +565,31 @@ html, body {
   background: var(--surface);
   border-radius: var(--radius-sm);
   padding: 9px 14px;
+}
+
+/* ── 대진 컴팩트 보기 (기록 탭 스타일) ─────────────────────────────────── */
+.dv-matches { display: flex; flex-direction: column; gap: 7px; }
+.dv-match {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 7px;
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 9px 11px;
+  font-size: 15px; font-weight: 700; letter-spacing: -0.01em;
+}
+.dv-court {
+  flex: none; font-size: 11px; font-weight: 800; color: var(--ink);
+  background: var(--accent); border-radius: 999px; padding: 2px 9px;
+  letter-spacing: 0.02em;
+}
+.dv-team { font-weight: 700; }
+.dv-team.win { color: var(--win); }
+.dv-team.win::after { content: " 🏆"; font-size: 13px; }
+.dv-vs { flex: none; font-size: 11px; font-weight: 800; color: var(--muted); letter-spacing: 0.08em; }
+.dv-score { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+.dv-score .dv-in { width: 46px; font-size: 16px; padding: 6px 4px; border-radius: 8px; }
+.dv-score-ro { margin-left: auto; font-size: 15px; font-weight: 800; color: var(--ink); }
+.dv-bye {
+  margin-top: 2px; font-size: 13px; font-weight: 600; color: var(--muted);
+  background: var(--surface); border-radius: var(--radius-sm); padding: 8px 12px;
 }
 
 /* ── Stats ───────────────────────────────────────────────────────────── */
