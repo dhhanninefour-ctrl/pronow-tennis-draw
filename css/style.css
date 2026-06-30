@@ -693,6 +693,43 @@ html, body {
 .hist-card.draw-only .hist-round { padding: 8px 10px; }
 .hist-card.draw-only .hist-match { font-size: 13.5px; padding: 2px 0; }
 
+/* ── 관리자 화면 전체 컴팩트 (role-admin 스코프) ───────────────────────── */
+.role-admin .screen-head { margin: 10px 2px 12px; }
+.role-admin .screen-head h2 { font-size: 22px; }
+.role-admin .screen-head .muted { font-size: 13px; }
+/* 회원 탭 */
+.role-admin .member-list { gap: 6px; }
+.role-admin .member-card { padding: 8px 11px; gap: 8px; }
+.role-admin .member-name { font-size: 14px; }
+.role-admin .member-sub, .role-admin .member-birth { font-size: 11px; }
+.role-admin .member-card .icon-btn { width: 28px; height: 28px; font-size: 14px; }
+.role-admin .badge, .role-admin .ntrp-badge { font-size: 10.5px; padding: 2px 7px; }
+.role-admin .guest-date-head { padding: 4px 4px; font-size: 12px; }
+/* 출석 탭 */
+.role-admin .config-grid { gap: 8px; margin: 4px 0 12px; }
+.role-admin .config-field { padding: 8px 10px; }
+.role-admin .config-field label { margin-bottom: 5px; }
+.role-admin .stepper-val { font-size: 18px; }
+.role-admin .att-list { gap: 6px; }
+.role-admin .att-card { padding: 8px 11px; gap: 9px; border-width: 1px; }
+.role-admin .att-card .check { font-size: 17px; }
+.role-admin .att-main { gap: 7px; }
+.role-admin .time-row { margin-top: 6px; padding-top: 6px; gap: 5px; }
+.role-admin .time-lbl { font-size: 11px; }
+.role-admin .time-in { font-size: 13px; padding: 4px 6px; }
+.role-admin .btn-tiny { font-size: 11px; padding: 4px 8px; }
+.role-admin .stay-badge { font-size: 11px; padding: 3px 8px; }
+/* 순위 탭 */
+.role-admin .rank-table { font-size: 13px; }
+.role-admin .rank-table thead th { padding: 7px 2px; }
+.role-admin .rank-table tbody td { padding: 8px 2px; }
+.role-admin .rank-table .rank-cell { font-size: 15px; width: 32px; }
+/* 기록 탭 */
+.role-admin .hist-list { gap: 8px; margin-top: 12px; }
+.role-admin .hist-card { padding: 10px 12px; }
+.role-admin .hist-date { font-size: 15px; }
+.role-admin .hist-toggle { padding: 6px 11px; font-size: 13px; }
+
 /* 탭이 많아질 때(최대 5개) 폭 보정 */
 .tabbar .tab { font-size: 14px; padding: 10px 4px; }
 

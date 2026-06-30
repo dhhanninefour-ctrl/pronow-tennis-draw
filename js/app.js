@@ -228,6 +228,11 @@
       acc.title = adminRole ? "관리자 계정" : "로그인 / 회원가입";
     }
     UI.readonly = !adminRole;
+    // 역할 클래스(컴팩트 스타일 스코프 등)
+    if (global.document.body) {
+      global.document.body.classList.toggle("role-admin", !!adminRole);
+      global.document.body.classList.toggle("role-member", !adminRole);
+    }
     // 로그인한 회원이면 본인 id 노출(자기 경기 점수 입력용). 관리자는 null.
     UI.memberId = (!adminRole && memberLoggedIn()) ? memberAuthId : null;
     UI.isSuper = adminRole && isSuper;
