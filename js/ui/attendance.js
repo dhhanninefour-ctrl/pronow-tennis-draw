@@ -7,10 +7,24 @@
   const S = global.TennisState;
   const UI = (global.TennisUI = global.TennisUI || {});
 
+  // 출석 트리(회원/게스트) 펼침 상태 — 기본 펼침
+  const attOpen = { reg: true, guest: true };
+
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
+  }
+  // 회원/게스트 트리 섹션
+  function attSection(title, type, list, guest) {
+    const open = attOpen[type] !== false;
+    return '<div class="member-section tree' + (open ? "" : " collapsed") + '" data-tree-sec="' + type + '">' +
+      '<h3 class="tree-head" data-act="att-tree-toggle" data-tree="' + type + '">' +
+        '<span class="tree-caret">' + (open ? "▼" : "▶") + '</span> ' + title +
+        ' <span class="count-pill ' + (guest ? "pill-guest" : "") + '">' + list.length + '</span></h3>' +
+      '<div class="tree-body">' +
+        (list.length ? '<ul class="att-list">' + list.map(attCard).join("") + '</ul>' : '<p class="empty">없습니다.</p>') +
+      '</div></div>';
   }
 
   function render(container) {
@@ -53,7 +67,8 @@
 
         (members.length === 0
           ? '<p class="empty">회원 탭에서 먼저 회원을 추가하세요.</p>'
-          : '<ul class="att-list">' + members.map(attCard).join("") + '</ul>') +
+          : attSection("회원", "reg", members.filter(function (m) { return m.type !== "guest"; }), false) +
+            attSection("게스트", "guest", members.filter(function (m) { return m.type === "guest"; }), true)) +
 
         '<div class="sticky-cta">' +
           '<button id="generate-btn" class="btn btn-primary btn-lg"' +
@@ -128,6 +143,17 @@
   }
 
   function bind(container) {
+    // 회원/게스트 트리 접기·펼치기
+    container.querySelectorAll('[data-act="att-tree-toggle"]').forEach(function (h) {
+      h.addEventListener("click", function () {
+        const type = h.getAttribute("data-tree");
+        attOpen[type] = !attOpen[type];
+        const sec = container.querySelector('[data-tree-sec="' + type + '"]');
+        const caret = h.querySelector(".tree-caret");
+        if (sec) sec.classList.toggle("collapsed", !attOpen[type]);
+        if (caret) caret.textContent = attOpen[type] ? "▼" : "▶";
+      });
+    });
     container.querySelectorAll('[data-act="att-toggle"]').forEach(function (main) {
       main.addEventListener("click", function () {
         S.toggleAttendance(main.getAttribute("data-id"));
