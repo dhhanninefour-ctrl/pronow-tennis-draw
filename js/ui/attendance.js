@@ -27,6 +27,7 @@
         '</div>' +
 
         '<div class="config-grid">' +
+          configField("날짜", '<input type="date" class="date-in" id="sess-date" value="' + (sess.date || "") + '" />') +
           configField("모드", modeToggle(sess.mode)) +
           configField("코트 수", stepper("courts", sess.courts, 1, 12)) +
           configField("라운드 수", stepper("rounds", sess.rounds, 1, 20)) +
@@ -97,6 +98,9 @@
       });
     });
 
+    const sd = container.querySelector("#sess-date");
+    if (sd) sd.addEventListener("change", function () { S.setSessionConfig({ date: sd.value }); });
+
     container.querySelectorAll(".seg").forEach(function (seg) {
       const kind = seg.getAttribute("data-seg");
       seg.querySelectorAll("button").forEach(function (b) {
@@ -128,7 +132,7 @@
     container.querySelector("#guest-add").addEventListener("click", function () {
       const name = guestInput.value.trim();
       if (!name) return;
-      const m = S.addMember(name, "guest", "", "", S.getActiveClub());
+      const m = S.addMember(name, "guest", "", S.getActiveClub());
       if (m) S.toggleAttendance(m.id, true); // 즉석 추가한 게스트는 바로 출석
       guestInput.value = "";
     });

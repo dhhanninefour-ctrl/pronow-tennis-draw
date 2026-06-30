@@ -333,6 +333,27 @@
     state.history = state.history.filter(function (h) { return h.id !== id; });
     commit();
   }
+  // 기록의 날짜 수정 → 날짜순 재정렬
+  function setHistoryDate(id, date) {
+    const h = state.history.find(function (x) { return x.id === id; });
+    if (!h) return;
+    const v = String(date || "").trim();
+    if (!v) return;
+    h.date = v;
+    state.history.sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
+    commit();
+  }
+  // 기록 레코드 추가(엑셀 업로드 복원용). 같은 날짜가 있으면 교체.
+  function addHistoryRecord(rec) {
+    if (!rec || !rec.generated) return false;
+    if (!rec.id) rec.id = uid();
+    if (!rec.savedAt) rec.savedAt = todayStr();
+    state.history = state.history.filter(function (h) { return h.date !== rec.date; });
+    state.history.unshift(rec);
+    state.history.sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
+    commit();
+    return true;
+  }
   function rankingSessions() {
     const list = state.history.map(function (h) { return { generated: h.generated, names: h.names }; });
     if (state.session.generated && state.session.generated.rounds) {
@@ -383,6 +404,8 @@
     setGenerated: setGenerated,
     archiveSession: archiveSession,
     deleteHistory: deleteHistory,
+    setHistoryDate: setHistoryDate,
+    addHistoryRecord: addHistoryRecord,
     rankingSessions: rankingSessions,
     namesForGenerated: namesForGenerated
   };

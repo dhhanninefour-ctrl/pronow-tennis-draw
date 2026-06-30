@@ -20,6 +20,115 @@
   function namesFrom(map, ids) {
     return (ids || []).map(function (id) { return esc(map[id] || "?"); }).join(" · ");
   }
+  function plainNames(map, ids) {
+    return (ids || []).map(function (id) { return map[id] || "?"; }).join(" · ");
+  }
+
+  // ── 결과(기록) 엑셀 다운로드/업로드 ──────────────────────────────────
+  function histTools(ro) {
+    if (ro) return "";
+    return '<div class="excel-row">' +
+        '<button id="hist-down" class="btn btn-ghost">⬇️ 대진·기록 다운로드</button>' +
+        '<button id="hist-up" class="btn btn-ghost">⬆️ 대진·기록 업로드</button>' +
+      '</div>' +
+      '<p class="muted small excel-hint"><b>대진과 경기 결과가 한 행</b>으로 담깁니다. 컬럼: <b>날짜·모드·라운드·코트·A팀·B팀·A점수·B점수·휴식</b> (복식 팀은 이름을 · 로 구분). 현재 진행 중인 대진도 함께 내려받고, 올리면 <b>같은 날짜끼리 한 모임</b>으로 기록됩니다.</p>';
+  }
+  function pushRecordRows(rows, date, mode, gen, names) {
+    const modeLabel = mode === "singles" ? "단식" : "복식";
+    (gen.rounds || []).forEach(function (rd) {
+      const byeStr = plainNames(names, rd.byes);
+      if (rd.matches && rd.matches.length) {
+        rd.matches.forEach(function (m, i) {
+          rows.push({
+            "날짜": date, "모드": modeLabel, "라운드": rd.roundNo, "코트": m.court,
+            "A팀": plainNames(names, m.teamA), "B팀": plainNames(names, m.teamB),
+            "A점수": m.scoreA == null ? "" : m.scoreA, "B점수": m.scoreB == null ? "" : m.scoreB,
+            "휴식": i === 0 ? byeStr : ""
+          });
+        });
+      } else {
+        rows.push({ "날짜": date, "모드": modeLabel, "라운드": rd.roundNo, "코트": "", "A팀": "", "B팀": "", "A점수": "", "B점수": "", "휴식": byeStr });
+      }
+    });
+  }
+  function historyExportRows() {
+    const st = S.get();
+    const rows = [];
+    // 현재 진행 중인(미저장) 대진 — 그 날짜가 기록에 없을 때만 포함
+    const cur = st.session.generated;
+    const histDates = (st.history || []).map(function (h) { return h.date; });
+    if (cur && cur.rounds && cur.rounds.length && histDates.indexOf(st.session.date) < 0) {
+      pushRecordRows(rows, st.session.date, st.session.mode, cur, S.namesForGenerated(cur));
+    }
+    (st.history || []).forEach(function (h) {
+      pushRecordRows(rows, h.date, h.mode, h.generated, h.names);
+    });
+    return rows;
+  }
+  function splitNames(s) { return String(s || "").split(/[,·\/]|\s+vs\s+|&/).map(function (x) { return x.trim(); }).filter(Boolean); }
+  function numOrNull(v) { if (v === "" || v == null) return null; const n = parseInt(v, 10); return isNaN(n) ? null : n; }
+  function pick(r, keys) { for (let i = 0; i < keys.length; i++) { if (r[keys[i]] != null && r[keys[i]] !== "") return r[keys[i]]; } return ""; }
+  // 이름→id: 현재 회원이면 그 id, 아니면 이름 기반 안정 id(과거 참가자, 명단엔 추가 안 함)
+  function resolveId(name, nameMap) {
+    name = String(name).trim(); if (!name) return null;
+    const m = S.activeMembers().find(function (x) { return x.name === name; });
+    const id = m ? m.id : ("imp:" + name);
+    nameMap[id] = name;
+    return id;
+  }
+  function buildRecordsFromRows(rows) {
+    const byDate = {};
+    rows.forEach(function (r) {
+      const date = String(pick(r, ["날짜", "date", "Date"]) || "").trim();
+      const rn = parseInt(pick(r, ["라운드", "round", "Round"]), 10);
+      if (!date || isNaN(rn)) return;
+      if (!byDate[date]) byDate[date] = { date: date, mode: "", rounds: {} };
+      const rec = byDate[date];
+      if (/단식|singles/i.test(String(pick(r, ["모드", "mode"]) || ""))) rec.mode = "singles";
+      if (!rec.rounds[rn]) rec.rounds[rn] = { roundNo: rn, matches: [], byeNames: [] };
+      const bye = String(pick(r, ["휴식", "bye"]) || "").trim();
+      if (bye) rec.rounds[rn].byeNames = rec.rounds[rn].byeNames.concat(splitNames(bye));
+      const a = String(pick(r, ["A팀", "A", "a"]) || "").trim();
+      const b = String(pick(r, ["B팀", "B", "b"]) || "").trim();
+      if (a || b) {
+        rec.rounds[rn].matches.push({
+          court: parseInt(pick(r, ["코트", "court"]), 10) || (rec.rounds[rn].matches.length + 1),
+          a: splitNames(a), b: splitNames(b),
+          sa: numOrNull(pick(r, ["A점수", "ascore", "scoreA"])), sb: numOrNull(pick(r, ["B점수", "bscore", "scoreB"]))
+        });
+      }
+    });
+    const records = [];
+    Object.keys(byDate).forEach(function (date) {
+      const rec = byDate[date];
+      const names = {}, gp = {}, bc = {};
+      let maxTeam = 1, hasScore = false;
+      function add(o, id) { if (id) o[id] = (o[id] || 0) + 1; }
+      const rounds = Object.keys(rec.rounds).map(function (k) { return rec.rounds[k]; })
+        .sort(function (x, y) { return x.roundNo - y.roundNo; })
+        .map(function (rd) {
+          const byes = rd.byeNames.map(function (n) { return resolveId(n, names); }).filter(Boolean);
+          byes.forEach(function (id) { add(bc, id); });
+          const matches = rd.matches.map(function (m, i) {
+            const teamA = m.a.map(function (n) { return resolveId(n, names); }).filter(Boolean);
+            const teamB = m.b.map(function (n) { return resolveId(n, names); }).filter(Boolean);
+            teamA.concat(teamB).forEach(function (id) { add(gp, id); });
+            maxTeam = Math.max(maxTeam, teamA.length, teamB.length);
+            if (m.sa != null || m.sb != null) hasScore = true;
+            return { court: m.court || (i + 1), teamA: teamA, teamB: teamB, scoreA: m.sa, scoreB: m.sb };
+          });
+          return { roundNo: rd.roundNo, matches: matches, byes: byes };
+        });
+      if (!rounds.length) return;
+      records.push({
+        id: null, date: date, mode: rec.mode || (maxTeam >= 2 ? "doubles" : "singles"),
+        scoring: hasScore,
+        generated: { rounds: rounds, stats: { gamesPlayed: gp, byeCount: bc, partnerPairs: {}, opponentPairs: {} }, warnings: [] },
+        names: names
+      });
+    });
+    return records;
+  }
 
   function render(container) {
     const st = S.get();
@@ -39,6 +148,7 @@
           '<p class="muted">' + (ro ? '지난 모임 결과를 볼 수 있습니다.' : '모임이 끝나면 저장하세요. 누적 순위는 <b>순위 → 시즌 누적</b>에서 봅니다.') + '</p>' +
         '</div>' +
 
+        histTools(ro) +
         saveUI +
 
         (hist.length === 0
@@ -61,7 +171,9 @@
     return '<div class="hist-card" data-id="' + h.id + '">' +
       '<div class="hist-head">' +
         '<div class="hist-meta">' +
-          '<div class="hist-date">' + esc(h.date) + '</div>' +
+          (UI.readonly
+            ? '<div class="hist-date">' + esc(h.date) + '</div>'
+            : '<input type="date" class="date-in hist-date-in" data-id="' + h.id + '" value="' + esc(h.date) + '" title="날짜 수정" />') +
           '<div class="muted small">' + modeLabel + ' · ' + players + '명 · ' + (h.generated.rounds.length) + '라운드</div>' +
         '</div>' +
         '<button class="btn btn-ghost hist-toggle" data-id="' + h.id + '">' + (open ? "접기" : "대진·결과") + '</button>' +
@@ -107,6 +219,40 @@
   }
 
   function bind(container) {
+    const down = container.querySelector("#hist-down");
+    if (down) down.addEventListener("click", function () {
+      const rows = historyExportRows();
+      if (!rows.length) { global.alert("내려받을 대진·기록이 없습니다."); return; }
+      down.disabled = true;
+      Promise.resolve(global.TennisExcel.exportHistory(rows))
+        .then(function () { down.disabled = false; })
+        .catch(function (e) { down.disabled = false; global.alert("다운로드 실패: " + e.message); });
+    });
+    const up = container.querySelector("#hist-up");
+    if (up) up.addEventListener("click", function () {
+      const input = global.document.createElement("input");
+      input.type = "file"; input.accept = ".xlsx,.xls,.csv";
+      input.onchange = function () {
+        const f = input.files && input.files[0]; if (!f) return;
+        up.disabled = true; up.textContent = "업로드 중…";
+        global.TennisExcel.readRows(f).then(function (rows) {
+          const recs = buildRecordsFromRows(rows);
+          up.disabled = false; up.textContent = "⬆️ 결과 업로드";
+          if (!recs.length) { global.alert("인식된 기록이 없습니다.\n첫 줄 헤더(날짜·라운드·코트·A팀·B팀…)를 확인하세요."); return; }
+          recs.forEach(function (r) { S.addHistoryRecord(r); });
+          global.alert(recs.length + "개 날짜의 결과를 불러왔습니다.");
+          render(container);
+        }).catch(function (e) { up.disabled = false; up.textContent = "⬆️ 결과 업로드"; global.alert("업로드 실패: " + e.message); });
+      };
+      input.click();
+    });
+    container.querySelectorAll(".hist-date-in").forEach(function (inp) {
+      inp.addEventListener("change", function () {
+        S.setHistoryDate(inp.getAttribute("data-id"), inp.value);
+      });
+      inp.addEventListener("click", function (e) { e.stopPropagation(); });
+    });
+
     const expandAll = container.querySelector("#expand-all");
     if (expandAll) expandAll.addEventListener("click", function () {
       const hist = S.get().history || [];
@@ -119,7 +265,7 @@
       if (archive.disabled) return;
       if (global.confirm("이번 모임을 기록으로 저장할까요?\n(저장 후 새 모임을 시작합니다 — 출석·대진은 초기화됩니다.)")) {
         const ok = S.archiveSession();
-        if (ok && UI.go) UI.go("history");
+        if (ok && UI.go) UI.go("draw");
       }
     });
     container.querySelectorAll(".hist-toggle").forEach(function (b) {

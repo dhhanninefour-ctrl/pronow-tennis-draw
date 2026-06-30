@@ -237,6 +237,35 @@ html, body {
   outline: none;
   transition: border .15s ease, background .15s ease;
 }
+
+/* 날짜 입력 (출석/대진/기록 공통) */
+.date-in {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  outline: none;
+}
+.date-in:focus { border-color: var(--ink-soft); }
+.draw-date-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+.draw-date-row label { font-size: 13px; font-weight: 800; color: var(--ink-soft); }
+.hist-date-in { padding: 6px 8px; font-size: 13px; }
+
+/* 대진·기록 합친 화면: 기록 섹션 구분선 */
+.sec-hist { border-top: 8px solid var(--surface); margin-top: 4px; }
+
+/* 지난 기록의 점수(읽기 전용) */
+.score-readonly { align-items: center; justify-content: center; }
+.score-text { font-weight: 800; font-size: 18px; color: var(--ink); min-width: 28px; text-align: center; }
 .add-row input[type="text"]:focus { border-color: var(--ink); background: #fff; }
 .type-select {
   font-family: inherit;

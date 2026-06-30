@@ -51,14 +51,31 @@
     }
   }
 
-  // 강제 클라우드 push (관리자 확정 후 최초 생성/저장에도 사용)
-  function pushNow() {
-    if (mode !== "cloud" || !roomCode) return Promise.resolve(false);
-    const state = S.get();
+  function doPush(state) {
     state._writer = clientId;
     state._ts = new Date().toISOString();
     return Cloud.saveRoom(roomCode, state.room ? state.room.name : "", state);
   }
+
+  // 안전장치: 로컬이 비었는데(회원 0) 클라우드엔 회원이 있으면 덮어쓰지 않고 클라우드를 복원해 옴
+  function guardedPush() {
+    if (mode !== "cloud" || !roomCode) return Promise.resolve(false);
+    const state = S.get();
+    const localEmpty = !state.members || state.members.length === 0;
+    if (!localEmpty) return doPush(state);
+    return Cloud.loadRoom(roomCode).then(function (row) {
+      const cloudHas = row && row.state && Array.isArray(row.state.members) && row.state.members.length > 0;
+      if (cloudHas) {
+        console.warn("빈 상태로 덮어쓰기 차단 — 클라우드 데이터 유지/복원");
+        applyRemote(Object.assign({}, row, { state: Object.assign({}, row.state, { _writer: null }) }));
+        return false;
+      }
+      return doPush(state);
+    });
+  }
+
+  // 강제 클라우드 push (관리자 확정 후 최초 생성/저장에도 사용)
+  function pushNow() { return guardedPush(); }
 
   function applyRemote(row) {
     if (!row || !row.state) return;
@@ -77,12 +94,22 @@
     if (isCloudAvailable() && roomCode) {
       mode = "cloud";
       return Cloud.loadRoom(roomCode).then(function (row) {
-        if (row && row.state && row.state.members) {
+        const cloudMembers = (row && row.state && Array.isArray(row.state.members)) ? row.state.members.length : 0;
+        const cached = Storage.load(roomCode) || Storage.load("LOCAL");
+        const cacheMembers = (cached && Array.isArray(cached.members)) ? cached.members.length : 0;
+        if (cloudMembers > 0) {
+          roomExisted = true;
+          S.replaceFromRemote(Object.assign({}, row.state, { _writer: null }));
+        } else if (cacheMembers > 0) {
+          // 클라우드는 비었지만 이 기기 캐시에 회원이 남아 있음 → 복원(관리자 확정 시 클라우드로 push)
+          console.warn("클라우드 회원 0명 — 이 기기 캐시(" + cacheMembers + "명)로 복원");
+          roomExisted = false;
+          S.replace(cached);
+        } else if (row && row.state && row.state.members) {
           roomExisted = true;
           S.replaceFromRemote(Object.assign({}, row.state, { _writer: null }));
         } else {
           roomExisted = false;
-          const cached = Storage.load(roomCode) || Storage.load("LOCAL");
           if (cached) S.replace(cached);
         }
         admin = false; // 클라우드 기본은 회원. app이 /admin+PIN 통과 시 setAdmin(true).
@@ -124,13 +151,7 @@
   }
 
   // 회원이 본인 변경(비밀번호 등)을 클라우드에 반영 (회원도 허용되는 쓰기)
-  function memberPush() {
-    if (mode !== "cloud" || !roomCode) return Promise.resolve(false);
-    const state = S.get();
-    state._writer = clientId;
-    state._ts = new Date().toISOString();
-    return Cloud.saveRoom(roomCode, state.room ? state.room.name : "", state);
-  }
+  function memberPush() { return guardedPush(); }
 
   function baseOrigin() { return global.location.origin; }
   function memberUrl() {

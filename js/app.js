@@ -114,13 +114,11 @@
         { id: "draw", label: "대진" }
       ];
       if (S.get().session.scoring) list.push({ id: "ranking", label: "순위" });
-      list.push({ id: "history", label: "기록" });
       return list;
     }
-    // 회원(보기 전용) — 대진/순위/기록 (가입·로그인은 👤 계정 아이콘)
+    // 회원(보기 전용) — 대진·기록/순위 (가입·로그인은 👤 계정 아이콘)
     const list = [{ id: "draw", label: "대진" }];
     if (S.get().session.scoring) list.push({ id: "ranking", label: "순위" });
-    list.push({ id: "history", label: "기록" });
     return list;
   }
 

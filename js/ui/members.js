@@ -40,17 +40,20 @@
   function nextClub(c) { return c === "sat" ? "sun" : c === "sun" ? "both" : "sat"; }
 
   function render(container) {
-    // 회원 관리는 전체 회원을 보여줌(클럽 배정용). 클럽칩으로 토/일/둘다 지정.
-    const pending = S.pendingMembers();
-    const members = S.activeMembers();
+    // 회원 관리는 현재 선택된 클럽 소속만 보여줌(완전 분리). '둘다'·미지정은 양쪽에 노출.
+    const active = S.getActiveClub();
+    const inClub = function (m) { return m.club === active || m.club === "both" || !m.club; };
+    const clubFull = { sat: "토요일", sun: "일요일" }[active] || "";
+    const pending = S.pendingMembers().filter(inClub);
+    const members = S.clubMembers(active);
     const regulars = members.filter(function (m) { return m.type === "regular"; });
     const guests = members.filter(function (m) { return m.type === "guest"; });
 
     container.innerHTML =
       '<div class="screen">' +
         '<div class="screen-head">' +
-          '<h2>회원 <span class="count-pill">' + members.length + '명</span></h2>' +
-          '<p class="muted">가입 승인 + 정기/게스트 관리. 각 회원의 <b>클럽칩(토·일·둘다)</b>을 눌러 소속을 지정하세요.</p>' +
+          '<h2>' + clubFull + ' 회원 <span class="count-pill">' + members.length + '명</span></h2>' +
+          '<p class="muted"><b>' + clubFull + ' 클럽</b> 회원만 표시됩니다. 클럽칩(토·일·둘다)을 눌러 소속을 바꾸면 해당 클럽으로 이동합니다. (다른 클럽은 상단 클럽 전환으로 관리)</p>' +
         '</div>' +
 
         '<div class="excel-row">' +

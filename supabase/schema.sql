@@ -31,3 +31,43 @@ drop policy if exists "anon update rooms" on public.rooms;
 create policy "anon read rooms"   on public.rooms for select using (true);
 create policy "anon insert rooms" on public.rooms for insert with check (true);
 create policy "anon update rooms" on public.rooms for update using (true) with check (true);
+
+-- =====================================================================
+-- 자동 백업 (데이터 유실 방지의 안전망)
+--   rooms가 수정되기 직전(OLD)의 상태를 스냅샷으로 보관한다.
+--   잘못된 쓰기(예: 빈 상태 덮어쓰기)가 발생해도 직전 상태로 되돌릴 수 있다.
+--   코드별 최신 300개만 유지(자동 정리). anon은 접근 불가(백업은 비공개).
+-- =====================================================================
+create table if not exists public.room_backups (
+  id          bigserial primary key,
+  code        text not null,
+  state       jsonb not null,
+  member_cnt  int,                                -- 스냅샷 당시 회원 수(빠른 점검용)
+  created_at  timestamptz not null default now()
+);
+create index if not exists room_backups_code_created
+  on public.room_backups(code, created_at desc);
+
+create or replace function public.backup_room_state() returns trigger as $fn$
+begin
+  if (OLD.state is not null) then
+    insert into public.room_backups(code, state, member_cnt)
+    values (OLD.code, OLD.state, coalesce(jsonb_array_length(OLD.state->'members'), 0));
+    -- 코드별 최신 300개만 보관
+    delete from public.room_backups b
+     where b.code = OLD.code
+       and b.id not in (
+         select id from public.room_backups
+          where code = OLD.code order by created_at desc limit 300
+       );
+  end if;
+  return NEW;
+end;
+$fn$ language plpgsql security definer;
+
+drop trigger if exists trg_backup_room on public.rooms;
+create trigger trg_backup_room before update on public.rooms
+for each row execute function public.backup_room_state();
+
+-- 백업 테이블은 RLS만 켜고 anon 정책을 주지 않음 → 익명 접근 차단(복구는 관리자/서비스 키로만)
+alter table public.room_backups enable row level security;

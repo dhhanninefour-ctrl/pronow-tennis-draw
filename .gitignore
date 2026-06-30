@@ -13,6 +13,9 @@ node_modules/
 supabase/.temp/
 .vercel/
 
+# 회원 임시 아이디/비밀번호가 든 복원 파일 — 커밋 금지
+회원복원.csv
+
 # 참고: config.js 는 일부러 커밋합니다(anon 키는 공개되어도 안전).
 # 만약 키를 비공개로 두고 싶다면 아래 줄의 주석을 해제하세요.
 # config.js

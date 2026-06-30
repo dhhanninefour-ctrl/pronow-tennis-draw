@@ -191,12 +191,12 @@
     });
   }
 
-  const DRAW_HEADER = ["라운드", "코트", "A팀", "B팀", "A점수", "B점수", "휴식"];
+  const DRAW_HEADER = ["날짜", "라운드", "코트", "A팀", "B팀", "A점수", "B점수", "휴식"];
   function exportDraw(rows) {
     return ensureXLSX().then(function (ok) {
       if (ok && global.XLSX) {
         const ws = global.XLSX.utils.json_to_sheet(rows, { header: DRAW_HEADER });
-        ws["!cols"] = [{ wch: 7 }, { wch: 6 }, { wch: 22 }, { wch: 22 }, { wch: 7 }, { wch: 7 }, { wch: 24 }];
+        ws["!cols"] = [{ wch: 12 }, { wch: 7 }, { wch: 6 }, { wch: 22 }, { wch: 22 }, { wch: 7 }, { wch: 7 }, { wch: 24 }];
         const wb = global.XLSX.utils.book_new();
         global.XLSX.utils.book_append_sheet(wb, ws, "대진");
         global.XLSX.writeFile(wb, "대진양식.xlsx");
@@ -210,8 +210,28 @@
     });
   }
 
+  // ── 기록(결과) 양식 ───────────────────────────────────────────────────
+  const HIST_HEADER = ["날짜", "모드", "라운드", "코트", "A팀", "B팀", "A점수", "B점수", "휴식"];
+  function exportHistory(rows) {
+    return ensureXLSX().then(function (ok) {
+      if (ok && global.XLSX) {
+        const ws = global.XLSX.utils.json_to_sheet(rows, { header: HIST_HEADER });
+        ws["!cols"] = [{ wch: 12 }, { wch: 6 }, { wch: 7 }, { wch: 6 }, { wch: 22 }, { wch: 22 }, { wch: 7 }, { wch: 7 }, { wch: 22 }];
+        const wb = global.XLSX.utils.book_new();
+        global.XLSX.utils.book_append_sheet(wb, ws, "기록");
+        global.XLSX.writeFile(wb, "기록.xlsx");
+        return "xlsx";
+      }
+      const lines = [HIST_HEADER.join(",")].concat(rows.map(function (r) {
+        return HIST_HEADER.map(function (h) { return csvCell(r[h]); }).join(",");
+      }));
+      downloadBlob(new global.Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" }), "기록.csv");
+      return "csv";
+    });
+  }
+
   global.TennisExcel = {
     exportMembers: exportMembers, importMembers: importMembers,
-    readRows: readRows, exportDraw: exportDraw
+    readRows: readRows, exportDraw: exportDraw, exportHistory: exportHistory
   };
 })(typeof window !== "undefined" ? window : this);
