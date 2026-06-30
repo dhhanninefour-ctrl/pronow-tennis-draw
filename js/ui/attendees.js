@@ -37,10 +37,12 @@
     return t ? '<span class="ntrp-badge">' + t + '</span>' : "";
   }
 
-  function voteCard(m, present) {
-    return '<li class="att-card ' + (present ? "on" : "") + '" data-id="' + m.id + '" data-act="vote">' +
+  // 회원 카드: 본인(mine)만 토글 가능, 나머지는 읽기 전용
+  function voteCard(m, present, mine) {
+    return '<li class="att-card ' + (present ? "on " : "") + (mine ? "mine" : "locked") + '"' +
+      (mine ? ' data-id="' + m.id + '" data-act="vote"' : '') + '>' +
       '<span class="check">' + (present ? "✅" : "⬜") + '</span>' +
-      '<span class="member-name">' + esc(m.name) + '</span>' +
+      '<span class="member-name">' + esc(m.name) + (mine ? ' <span class="badge badge-regular">나</span>' : '') + '</span>' +
       genderBadge(m) + skillBadge(m) +
     '</li>';
   }
@@ -83,13 +85,15 @@
           '<h2>참석자 <span class="count-pill accent">' + present.length + '명</span></h2>' +
           '<div class="draw-date-row"><label>📅 날짜</label>' +
             '<input type="date" class="date-in" id="att-date" value="' + esc(date) + '" /></div>' +
-          '<p class="muted small">' + clubLabel + ' 클럽 — 참석하면 이름을 눌러 ✅ 표시하세요. (실시간 공유)</p>' +
+          '<p class="muted small">' + clubLabel + ' 클럽 — ' +
+            (UI.memberId ? '<b>본인 이름(나)</b>을 눌러 출석을 ✅ 표시하세요.' : '로그인하면 본인 출석을 체크할 수 있어요. (우측 상단 👤)') +
+            ' (실시간 공유)</p>' +
         '</div>' +
 
         '<div class="member-section">' +
           '<h3>회원 <span class="count-pill">' + roster.length + '</span></h3>' +
           (roster.length
-            ? '<ul class="att-list">' + roster.map(function (m) { return voteCard(m, !!att[m.id]); }).join("") + '</ul>'
+            ? '<ul class="att-list">' + roster.map(function (m) { return voteCard(m, !!att[m.id], m.id === UI.memberId); }).join("") + '</ul>'
             : '<p class="empty">아직 회원이 없습니다.</p>') +
         '</div>' +
 

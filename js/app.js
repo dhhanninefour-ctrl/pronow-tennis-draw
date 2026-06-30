@@ -196,6 +196,8 @@
       const clubs = allowedClubs();
       if (clubs.indexOf(S.getActiveClub()) < 0) { S.setActiveClub(clubs[0]); return; }
     }
+    // 상태(클라우드)가 로드된 뒤에도 회원 본인 인식이 유지되도록 매번 재계산
+    UI.memberId = (!adminRole && memberLoggedIn()) ? memberAuthId : null;
     renderHeader();
     renderClubBar();
     if (memberGated()) { renderAccountGate(); return; }

@@ -7,6 +7,10 @@
   const S = global.TennisState;
   const UI = (global.TennisUI = global.TennisUI || {});
 
+  // 트리 섹션 상태: 펼침 여부(기본 접힘, 헤더 클릭 시 펼침) + 검색어
+  const secOpen = { regular: false, guest: false };
+  const secQuery = { regular: "", guest: "" };
+
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
@@ -100,14 +104,20 @@
       '<ul class="member-list">' + rows + '</ul></div>';
   }
 
+  // 트리(접기/펼치기) + 검색 섹션
   function section(title, type, list) {
+    const pill = type === "guest" ? "pill-guest" : "";
+    const open = secOpen[type] !== false; // 기본 펼침
+    const head =
+      '<h3 class="tree-head" data-act="tree-toggle" data-tree="' + type + '">' +
+        '<span class="tree-caret">' + (open ? "▼" : "▶") + '</span> ' + title +
+        ' <span class="count-pill ' + pill + '">' + list.length + '</span></h3>';
     if (list.length === 0) {
-      return '<div class="member-section"><h3>' + title + ' <span class="count-pill ' +
-        (type === "guest" ? "pill-guest" : "") + '">0</span></h3>' +
-        '<p class="empty">아직 없습니다.</p></div>';
+      return '<div class="member-section tree' + (open ? "" : " collapsed") + '" data-tree-sec="' + type + '">' +
+        head + '<div class="tree-body"><p class="empty">아직 없습니다.</p></div></div>';
     }
     const rows = list.map(function (m) {
-      return '<li class="member-card" data-id="' + m.id + '">' +
+      return '<li class="member-card" data-id="' + m.id + '" data-name="' + esc(m.name).toLowerCase() + '">' +
         '<div class="member-info"><span class="member-name">' + esc(m.name) + '</span>' +
           (m.loginId ? '<span class="member-sub">@' + esc(m.loginId) + '</span>' : '<span class="member-sub muted">아이디 없음</span>') + '</div>' +
         ntrpBadge(m) +
@@ -120,12 +130,44 @@
         '<button class="icon-btn" data-act="del" title="삭제">🗑</button>' +
       '</li>';
     }).join("");
-    return '<div class="member-section"><h3>' + title + ' <span class="count-pill ' +
-      (type === "guest" ? "pill-guest" : "") + '">' + list.length + '</span></h3>' +
-      '<ul class="member-list">' + rows + '</ul></div>';
+    return '<div class="member-section tree' + (open ? "" : " collapsed") + '" data-tree-sec="' + type + '">' +
+      head +
+      '<div class="tree-body">' +
+        '<input type="text" class="tree-search" data-tree-search="' + type + '" placeholder="🔍 이름 검색" value="' + esc(secQuery[type] || "") + '" />' +
+        '<ul class="member-list">' + rows + '</ul>' +
+      '</div></div>';
   }
 
   function bind(container) {
+    // 트리 접기/펼치기 (회원 / 게스트)
+    container.querySelectorAll('[data-act="tree-toggle"]').forEach(function (h) {
+      h.addEventListener("click", function () {
+        const type = h.getAttribute("data-tree");
+        secOpen[type] = !secOpen[type];
+        const sec = container.querySelector('[data-tree-sec="' + type + '"]');
+        const caret = h.querySelector('.tree-caret');
+        if (sec) sec.classList.toggle("collapsed", !secOpen[type]);
+        if (caret) caret.textContent = secOpen[type] ? "▼" : "▶";
+      });
+    });
+    // 트리 검색 (이름 필터, 재렌더 없이 행 숨김)
+    container.querySelectorAll('.tree-search').forEach(function (inp) {
+      inp.addEventListener("click", function (e) { e.stopPropagation(); });
+      inp.addEventListener("input", function () {
+        const type = inp.getAttribute("data-tree-search");
+        const q = inp.value.trim().toLowerCase();
+        secQuery[type] = q;
+        const sec = container.querySelector('[data-tree-sec="' + type + '"]');
+        if (!sec) return;
+        sec.querySelectorAll('.member-card').forEach(function (li) {
+          const name = li.getAttribute("data-name") || "";
+          li.style.display = (!q || name.indexOf(q) >= 0) ? "" : "none";
+        });
+      });
+      // 재렌더 후 기존 검색어 다시 적용
+      if (inp.value.trim()) inp.dispatchEvent(new global.Event("input"));
+    });
+
     // 엑셀 다운로드/업로드
     const downBtn = container.querySelector("#excel-down");
     if (downBtn) downBtn.addEventListener("click", function () {

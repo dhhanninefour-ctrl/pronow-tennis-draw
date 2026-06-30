@@ -298,6 +298,22 @@ html, body {
 
 /* 회원(권한자) 대진 생성 버튼 */
 .member-gen { margin: 12px 0; }
+
+/* 참석 투표: 본인 카드 강조 / 타인 카드 읽기 전용 */
+.att-card.mine { border: 2px solid var(--accent); cursor: pointer; }
+.att-card.locked { cursor: default; opacity: 0.7; }
+
+/* 회원/게스트 트리(접기·펼치기) + 검색 */
+.tree-head { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; }
+.tree-caret { font-size: 11px; color: var(--ink-soft); width: 14px; display: inline-block; text-align: center; }
+.member-section.tree.collapsed .tree-body { display: none; }
+.tree-search {
+  width: 100%; box-sizing: border-box; font-family: inherit; font-size: 15px;
+  padding: 10px 12px; margin: 4px 0 10px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+  background: var(--surface-2); outline: none;
+}
+.tree-search:focus { border-color: var(--ink-soft); }
 .add-row input[type="text"]:focus { border-color: var(--ink); background: #fff; }
 .type-select {
   font-family: inherit;
