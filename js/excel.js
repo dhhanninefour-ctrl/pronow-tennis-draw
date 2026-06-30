@@ -199,8 +199,34 @@
     });
   }
 
+  // 여러 시트 한 번에 읽기 → { 시트명: [행...] }  (CSV는 { csv: [행...] })
+  function readAllSheets(file) {
+    const isCsv = /\.csv$/i.test(file.name || "") || /csv/i.test(file.type || "");
+    return ensureXLSX().then(function (ok) {
+      return new Promise(function (resolve, reject) {
+        const reader = new global.FileReader();
+        reader.onload = function () {
+          try {
+            const out = {};
+            if (!isCsv && ok && global.XLSX) {
+              const wb = global.XLSX.read(new global.Uint8Array(reader.result), { type: "array", cellDates: true });
+              wb.SheetNames.forEach(function (nm) {
+                out[nm] = global.XLSX.utils.sheet_to_json(wb.Sheets[nm], { defval: "" });
+              });
+            } else {
+              out.csv = parseCSV(new global.TextDecoder("utf-8").decode(reader.result));
+            }
+            resolve(out);
+          } catch (e) { reject(new Error("파일을 읽지 못했습니다.")); }
+        };
+        reader.onerror = function () { reject(new Error("파일 읽기 실패")); };
+        reader.readAsArrayBuffer(file);
+      });
+    });
+  }
+
   const DRAW_HEADER = ["날짜", "라운드", "코트", "A팀", "B팀", "A점수", "B점수", "휴식"];
-  const ATT_HEADER = ["날짜", "이름", "구분", "NTRP", "출근", "퇴근", "체류(분)"];
+  const ATT_HEADER = ["날짜", "이름", "구분", "성별", "NTRP", "구력", "출근", "퇴근", "체류(분)"];
   // rows: 대진 행 / attRows(선택): 출퇴근 행 → 있으면 두 번째 시트로 함께 저장
   function exportDraw(rows, attRows) {
     return ensureXLSX().then(function (ok) {
@@ -211,7 +237,7 @@
         global.XLSX.utils.book_append_sheet(wb, ws, "대진");
         if (attRows && attRows.length) {
           const ws2 = global.XLSX.utils.json_to_sheet(attRows, { header: ATT_HEADER });
-          ws2["!cols"] = [{ wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 7 }, { wch: 8 }, { wch: 8 }, { wch: 9 }];
+          ws2["!cols"] = [{ wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 6 }, { wch: 8 }, { wch: 6 }, { wch: 8 }, { wch: 8 }, { wch: 9 }];
           global.XLSX.utils.book_append_sheet(wb, ws2, "출퇴근");
         }
         global.XLSX.writeFile(wb, "대진양식.xlsx");
@@ -230,7 +256,7 @@
     return ensureXLSX().then(function (ok) {
       if (ok && global.XLSX) {
         const ws = global.XLSX.utils.json_to_sheet(rows, { header: ATT_HEADER });
-        ws["!cols"] = [{ wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 7 }, { wch: 8 }, { wch: 8 }, { wch: 9 }];
+        ws["!cols"] = [{ wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 6 }, { wch: 8 }, { wch: 6 }, { wch: 8 }, { wch: 8 }, { wch: 9 }];
         const wb = global.XLSX.utils.book_new();
         global.XLSX.utils.book_append_sheet(wb, ws, "출퇴근");
         global.XLSX.writeFile(wb, "출퇴근.xlsx");
@@ -266,7 +292,7 @@
 
   global.TennisExcel = {
     exportMembers: exportMembers, importMembers: importMembers,
-    readRows: readRows, exportDraw: exportDraw, exportHistory: exportHistory,
+    readRows: readRows, readAllSheets: readAllSheets, exportDraw: exportDraw, exportHistory: exportHistory,
     exportAttendance: exportAttendance
   };
 })(typeof window !== "undefined" ? window : this);

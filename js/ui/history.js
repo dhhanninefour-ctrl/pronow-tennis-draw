@@ -187,6 +187,24 @@
 
   function recordDetail(h) {
     let html = "";
+    // 인원 + 출퇴근 (업로드/기록된 경우)
+    const times = h.times || {};
+    const hasTimes = Object.keys(times).length > 0;
+    const attIds = (h.attendance && Object.keys(h.attendance).length)
+      ? Object.keys(h.attendance).filter(function (id) { return h.attendance[id]; })
+      : (hasTimes ? Object.keys(times) : []);
+    if (attIds.length) {
+      const trs = attIds.map(function (id) {
+        const t = times[id] || {};
+        const stay = S.stayMinutes ? S.stayMinutes(t) : null;
+        const tcell = (t.in || t.out)
+          ? esc((t.in || "-") + " ~ " + (t.out || "-")) + (stay != null ? ' <span class="muted">(' + S.fmtDuration(stay) + ')</span>' : "")
+          : '<span class="muted">-</span>';
+        return '<tr><td class="name-cell">' + esc(h.names[id] || "?") + '</td><td>' + tcell + '</td></tr>';
+      }).join("");
+      html += '<div class="hist-sub">👥 인원 ' + attIds.length + '명 · 출퇴근</div>' +
+        '<table class="rank-table compact"><thead><tr><th>이름</th><th>출근 ~ 퇴근 (체류)</th></tr></thead><tbody>' + trs + '</tbody></table>';
+    }
     // 그날 순위 (점수가 있었으면) — 승/패/승률/득실
     if (h.scoring) {
       const rows = R.compute(h.generated);

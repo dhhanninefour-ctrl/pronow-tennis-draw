@@ -408,6 +408,29 @@
     state.history = state.history.filter(function (h) { return h.id !== id; });
     commit();
   }
+  // 업로드한 한 날짜의 데이터(출석/출퇴근/대진)를 적용:
+  //  - 현재 세션 날짜면 진행 세션에, 아니면 날짜별 기록으로 보관
+  function applyImportedDate(date, p) {
+    p = p || {};
+    if (date && date === state.session.date) {
+      const s = state.session;
+      if (p.attendance) Object.keys(p.attendance).forEach(function (id) { s.attendance[id] = true; });
+      if (p.times) { s.times = s.times || {}; Object.assign(s.times, p.times); }
+      if (p.mode) s.mode = p.mode;
+      if (p.scoring) s.scoring = true;
+      if (p.generated && p.generated.rounds && p.generated.rounds.length) s.generated = p.generated;
+      commit();
+      return "session";
+    }
+    const gen = (p.generated && p.generated.rounds) ? p.generated
+      : { rounds: [], stats: { gamesPlayed: {}, byeCount: {} }, warnings: [], names: p.names || {} };
+    addHistoryRecord({
+      date: date, mode: p.mode || "doubles", scoring: !!p.scoring,
+      generated: gen, names: p.names || {}, times: p.times || {}, attendance: p.attendance || {}
+    });
+    return "history";
+  }
+
   // 기록의 날짜 수정 → 날짜순 재정렬
   function setHistoryDate(id, date) {
     const h = state.history.find(function (x) { return x.id === id; });
@@ -489,6 +512,7 @@
     deleteHistory: deleteHistory,
     setHistoryDate: setHistoryDate,
     addHistoryRecord: addHistoryRecord,
+    applyImportedDate: applyImportedDate,
     rankingSessions: rankingSessions,
     namesForGenerated: namesForGenerated
   };

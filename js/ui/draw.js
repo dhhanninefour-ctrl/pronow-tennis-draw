@@ -426,7 +426,9 @@
     return S.presentMembers().map(function (m) {
       const t = times[m.id] || {}, stay = S.stayMinutes(t);
       return { "날짜": date, "이름": m.name, "구분": m.type === "guest" ? "게스트" : "정기",
+        "성별": m.gender === "F" ? "여" : m.gender === "M" ? "남" : "",
         "NTRP": (typeof m.ntrp === "number") ? m.ntrp.toFixed(1) : "",
+        "구력": (typeof m.years === "number") ? m.years : "",
         "출근": t.in || "", "퇴근": t.out || "", "체류(분)": stay == null ? "" : stay };
     });
   }
@@ -549,5 +551,5 @@
     });
   }
 
-  UI.draw = { render: render, generateAndGo: generateAndGo };
+  UI.draw = { render: render, generateAndGo: generateAndGo, buildFromRows: buildFromRows };
 })(typeof window !== "undefined" ? window : this);
