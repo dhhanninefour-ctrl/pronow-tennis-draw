@@ -191,7 +191,7 @@
               rows = parseCSV(new global.TextDecoder("utf-8").decode(reader.result));
             }
             resolve(rows);
-          } catch (e) { reject(new Error("파일을 읽지 못했습니다.")); }
+          } catch (e) { reject(new Error("엑셀을 읽지 못했습니다. 파일에 암호/보호가 걸려 있거나 옛 형식일 수 있어요. 엑셀에서 '다른 이름으로 저장 → .xlsx(암호 없이) 또는 .csv'로 저장해 다시 올려주세요.")); }
         };
         reader.onerror = function () { reject(new Error("파일 읽기 실패")); };
         reader.readAsArrayBuffer(file);
@@ -217,7 +217,7 @@
               out.csv = parseCSV(new global.TextDecoder("utf-8").decode(reader.result));
             }
             resolve(out);
-          } catch (e) { reject(new Error("파일을 읽지 못했습니다.")); }
+          } catch (e) { reject(new Error("엑셀을 읽지 못했습니다. 파일에 암호/보호가 걸려 있거나 옛 형식일 수 있어요. 엑셀에서 '다른 이름으로 저장 → .xlsx(암호 없이) 또는 .csv'로 저장해 다시 올려주세요.")); }
         };
         reader.onerror = function () { reject(new Error("파일 읽기 실패")); };
         reader.readAsArrayBuffer(file);

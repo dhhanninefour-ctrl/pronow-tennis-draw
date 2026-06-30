@@ -64,7 +64,7 @@
     return m ? m.name : "?";
   }
   function names(ids) {
-    return ids.map(nameOf).map(esc).join(" · ");
+    return ids.map(nameOf).map(esc).join(" / ");
   }
 
   // 날짜별로 볼 수 있는 대진 목록: 현재 진행 대진 + 지난 기록(날짜별)
@@ -246,7 +246,7 @@
         '<button id="draw-down" class="btn btn-ghost">⬇️ 대진·결과 다운로드</button>' +
         '<button id="draw-up" class="btn btn-ghost">⬆️ 대진·결과 업로드</button>' +
       '</div>' +
-      '<p class="muted small excel-hint"><b>대진과 경기 결과를 한 행</b>으로 작성·업로드할 수 있어요. 컬럼: <b>날짜·라운드·코트·A팀·B팀·A점수·B점수·휴식</b> (복식 팀은 이름을 · 로 구분). 받은 파일에 점수만 채워 다시 올려도 됩니다.</p>';
+      '<p class="muted small excel-hint"><b>대진과 경기 결과를 한 행</b>으로 작성·업로드할 수 있어요. 컬럼: <b>날짜·라운드·코트·A팀·B팀·A점수·B점수·휴식</b> (복식 팀은 이름을 <b>/</b> 로 구분). 받은 파일에 점수만 채워 다시 올려도 됩니다.</p>';
   }
 
   // 점수 입력 가능 여부: 관리자 전체, 회원은 본인이 참여한 경기만
@@ -324,7 +324,7 @@
       if (namesMap) return namesMap[id] || "?";
       const m = S.get().members.find(function (x) { return x.id === id; });
       return m ? m.name : "?";
-    }).join(" · ");
+    }).join(" / ");
   }
   function pushDrawRows(rows, date, gen, namesMap) {
     (gen.rounds || []).forEach(function (rd) {
@@ -357,7 +357,7 @@
       // 빈 양식 예시 (출석자 참고)
       const date = st.session.date || "";
       const present = S.presentMembers().map(function (m) { return m.name; });
-      rows.push({ "날짜": date, "라운드": 1, "코트": 1, "A팀": present[0] ? present.slice(0, 2).join(" · ") : "홍길동 · 김철수", "B팀": present[2] ? present.slice(2, 4).join(" · ") : "이영희 · 박민수", "A점수": "", "B점수": "", "휴식": "" });
+      rows.push({ "날짜": date, "라운드": 1, "코트": 1, "A팀": present[0] ? present.slice(0, 2).join(" / ") : "홍길동 / 김철수", "B팀": present[2] ? present.slice(2, 4).join(" / ") : "이영희 / 박민수", "A점수": "", "B점수": "", "휴식": "" });
       rows.push({ "날짜": date, "라운드": 2, "코트": 1, "A팀": "", "B팀": "", "A점수": "", "B점수": "", "휴식": "" });
     }
     return rows;
@@ -500,7 +500,10 @@
     const dd = container.querySelector("#draw-date");
     if (dd) dd.addEventListener("change", function () { S.setSessionConfig({ date: dd.value }); });
     const regen = container.querySelector("#regen-btn");
-    if (regen) regen.addEventListener("click", function () { generateAndGo(true); });
+    if (regen) regen.addEventListener("click", function () {
+      if (!global.confirm("대진을 다시 생성할까요? 지금 대진이 새 조합으로 바뀝니다.")) return;
+      generateAndGo(true);
+    });
 
     // 대진 수정 모드 토글
     const editToggle = container.querySelector("#draw-edit-toggle");

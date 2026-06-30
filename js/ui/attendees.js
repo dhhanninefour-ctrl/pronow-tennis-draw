@@ -174,10 +174,12 @@
       pushShared();
       render(container);
     });
-    // 권한자 대진 생성
+    // 권한자 대진 생성 (관리자 부여 권한자만)
     const gen = container.querySelector("#member-gen");
     if (gen) gen.addEventListener("click", function () {
       if (gen.disabled) return;
+      if (!(UI.memberId && S.canGenerateDraw(UI.memberId))) { global.alert("대진 생성 권한이 없습니다. 관리자에게 권한을 요청하세요."); return; }
+      if (!global.confirm("출석 인원으로 대진을 생성할까요?")) return;
       if (UI.draw && UI.draw.generateAndGo) UI.draw.generateAndGo(false);
     });
     // 회원 투표 토글

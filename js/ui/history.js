@@ -18,10 +18,10 @@
     });
   }
   function namesFrom(map, ids) {
-    return (ids || []).map(function (id) { return esc(map[id] || "?"); }).join(" · ");
+    return (ids || []).map(function (id) { return esc(map[id] || "?"); }).join(" / ");
   }
   function plainNames(map, ids) {
-    return (ids || []).map(function (id) { return map[id] || "?"; }).join(" · ");
+    return (ids || []).map(function (id) { return map[id] || "?"; }).join(" / ");
   }
 
   // ── 결과(기록) 엑셀 다운로드/업로드 ──────────────────────────────────

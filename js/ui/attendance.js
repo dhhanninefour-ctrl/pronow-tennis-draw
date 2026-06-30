@@ -302,6 +302,7 @@
     const genBtn = container.querySelector("#generate-btn");
     if (genBtn) {
       genBtn.addEventListener("click", function () {
+        if (!global.confirm("출석한 인원으로 대진을 생성할까요?")) return;
         UI.draw.generateAndGo();
       });
     }
