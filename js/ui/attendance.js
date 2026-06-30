@@ -52,9 +52,9 @@
         '<p class="muted small">⏱ 라운드는 <b>시작 시간부터 30분 간격</b>으로 대진 화면에 표시됩니다. 출석한 인원의 <b>출퇴근·체류시간</b>도 아래에서 기록할 수 있어요.</p>' +
         '<div class="excel-row">' +
           '<button id="att-down" class="btn btn-ghost">⬇️ 출퇴근 다운로드</button>' +
-          '<button id="att-up" class="btn btn-ghost">⬆️ 출퇴근·인원·대진 업로드</button>' +
+          '<button id="att-up" class="btn btn-ghost">⬆️ 출퇴근·인원 업로드</button>' +
         '</div>' +
-        '<p class="muted small">⬆️ 다운로드와 <b>같은 양식</b>(엑셀 시트 <b>대진</b>+<b>출퇴근</b>)을 올리면 <b>날짜별</b>로 인원·출퇴근·대진·결과가 한 번에 기록됩니다. (과거 데이터 일괄 입력용)</p>' +
+        '<p class="muted small">⬆️ <b>출퇴근 양식</b>(날짜·이름·구분·성별·NTRP·구력·출근·퇴근)을 올리면 <b>날짜별 인원·출퇴근</b>이 기록됩니다. <b>대진·결과</b>는 같은 날짜로 <b>대진 탭</b>에서 올리면 합쳐집니다.</p>' +
 
         '<div class="add-row guest-form">' +
           '<input type="text" id="guest-name" placeholder="게스트 이름" autocomplete="off" maxlength="20" />' +
@@ -146,49 +146,34 @@
     '</div>';
   }
 
-  // 통합 업로드: {시트명:행[]} → 날짜별 인원·출퇴근·대진을 기록
+  // 출퇴근·인원 전용 업로드: {시트명:행[]} → 날짜별 인원·출퇴근만 기록 (대진은 대진 탭에서)
   function pick(r, keys) { for (let i = 0; i < keys.length; i++) { if (r[keys[i]] != null && r[keys[i]] !== "") return r[keys[i]]; } return ""; }
-  function importUnified(sheets) {
-    let drawRows = [], attRows = [];
+  function importAttendance(sheets) {
+    let attRows = [];
     Object.keys(sheets).forEach(function (nm) {
       const rows = sheets[nm]; if (!rows || !rows.length) return;
       const keys = Object.keys(rows[0] || {}).join("|");
-      if (/라운드|round|A팀|a팀/i.test(keys)) drawRows = drawRows.concat(rows);
-      else if (/이름|name|성명/i.test(keys) && /출근|퇴근|in|out|체류/i.test(keys)) attRows = attRows.concat(rows);
+      if (/이름|name|성명/i.test(keys) && /출근|퇴근|in|out|체류|날짜|date/i.test(keys)) attRows = attRows.concat(rows);
     });
-    const dRows = {}, aRows = {}, allDates = {};
-    drawRows.forEach(function (r) { const d = String(pick(r, ["날짜", "date", "Date"]) || "").trim(); if (d) { (dRows[d] = dRows[d] || []).push(r); allDates[d] = 1; } });
-    attRows.forEach(function (r) { const d = String(pick(r, ["날짜", "date", "Date"]) || "").trim(); if (d) { (aRows[d] = aRows[d] || []).push(r); allDates[d] = 1; } });
-    const drawApi = global.TennisUI.draw;
+    const aRows = {};
+    attRows.forEach(function (r) { const d = String(pick(r, ["날짜", "date", "Date"]) || "").trim(); if (d) { (aRows[d] = aRows[d] || []).push(r); } });
+    const club = S.getActiveClub();
     let dates = 0, people = 0;
-    Object.keys(allDates).forEach(function (date) {
-      const names = {};
-      function resolveId(name) {
-        name = String(name).trim(); if (!name) return null;
-        const m = S.activeMembers().find(function (x) { return x.name === name; });
-        const id = m ? m.id : ("imp:" + name); names[id] = name; return id;
-      }
-      let generated = null, mode = "doubles", scoring = false;
-      if (dRows[date] && dRows[date].length && drawApi && drawApi.buildFromRows) {
-        const built = drawApi.buildFromRows(dRows[date]);
-        if (built && built.generated && built.generated.rounds.length) {
-          generated = built.generated; mode = built.mode; scoring = built.hasScore;
-          Object.assign(names, built.names || {});
-        }
-      }
-      const attendance = {}, times = {};
+    Object.keys(aRows).forEach(function (date) {
+      const names = {}, attendance = {}, times = {};
       (aRows[date] || []).forEach(function (r) {
-        const id = resolveId(pick(r, ["이름", "name", "성명"]));
-        if (!id) return;
-        attendance[id] = true; people++;
+        const name = String(pick(r, ["이름", "name", "성명"]) || "").trim();
+        if (!name) return;
+        const m = S.activeMembers().find(function (x) { return x.name === name; });
+        const id = m ? m.id : ("imp:" + name);
+        names[id] = name; attendance[id] = true; people++;
         const tin = String(pick(r, ["출근", "in"]) || "").trim(), tout = String(pick(r, ["퇴근", "out"]) || "").trim();
         if (tin || tout) times[id] = { in: tin, out: tout };
       });
-      if (generated) generated.rounds.forEach(function (rd) {
-        (rd.matches || []).forEach(function (m) { (m.teamA || []).concat(m.teamB || []).forEach(function (id) { attendance[id] = true; }); });
-      });
-      S.applyImportedDate(date, { attendance: attendance, times: times, generated: generated, names: names, mode: mode, scoring: scoring });
-      dates++;
+      if (Object.keys(attendance).length) {
+        S.applyImportedDate(date, { attendance: attendance, times: times, names: names });
+        dates++;
+      }
     });
     return { dates: dates, people: people };
   }
@@ -249,12 +234,12 @@
         const f = input.files && input.files[0]; if (!f) return;
         attUp.disabled = true; attUp.textContent = "업로드 중…";
         global.TennisExcel.readAllSheets(f).then(function (sheets) {
-          const res = importUnified(sheets);
-          attUp.disabled = false; attUp.textContent = "⬆️ 출퇴근·인원·대진 업로드";
-          if (!res.dates) { global.alert("인식된 데이터가 없습니다.\n시트 헤더(날짜·이름·출근/퇴근 또는 날짜·라운드·A팀…)를 확인하세요."); return; }
-          global.alert(res.dates + "개 날짜 기록 완료 (인원 " + res.people + "명).");
+          const res = importAttendance(sheets);
+          attUp.disabled = false; attUp.textContent = "⬆️ 출퇴근·인원 업로드";
+          if (!res.dates) { global.alert("인식된 출퇴근 데이터가 없습니다.\n헤더(날짜·이름·출근·퇴근)를 확인하세요."); return; }
+          global.alert(res.dates + "개 날짜 · 인원 " + res.people + "명 기록 완료.");
           render(container);
-        }).catch(function (e) { attUp.disabled = false; attUp.textContent = "⬆️ 출퇴근·인원·대진 업로드"; global.alert("업로드 실패: " + e.message); });
+        }).catch(function (e) { attUp.disabled = false; attUp.textContent = "⬆️ 출퇴근·인원 업로드"; global.alert("업로드 실패: " + e.message); });
       };
       input.click();
     });

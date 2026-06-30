@@ -422,6 +422,20 @@
       commit();
       return "session";
     }
+    // 같은 날짜 기록이 있으면 병합(출퇴근 따로 + 대진 따로 올려도 합쳐짐)
+    const existing = state.history.find(function (h) { return h.date === date; });
+    if (existing) {
+      if (p.generated && p.generated.rounds && p.generated.rounds.length) {
+        existing.generated = p.generated;
+        if (p.mode) existing.mode = p.mode;
+        if (p.scoring) existing.scoring = true;
+      }
+      existing.names = Object.assign({}, existing.names || {}, p.names || {});
+      existing.times = Object.assign({}, existing.times || {}, p.times || {});
+      existing.attendance = Object.assign({}, existing.attendance || {}, p.attendance || {});
+      commit();
+      return "history";
+    }
     const gen = (p.generated && p.generated.rounds) ? p.generated
       : { rounds: [], stats: { gamesPlayed: {}, byeCount: {} }, warnings: [], names: p.names || {} };
     addHistoryRecord({

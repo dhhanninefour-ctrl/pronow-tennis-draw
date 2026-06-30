@@ -437,7 +437,7 @@
     const down = container.querySelector("#draw-down");
     if (down) down.addEventListener("click", function () {
       down.disabled = true;
-      Promise.resolve(global.TennisExcel.exportDraw(drawExportRows(), attendanceRows())).then(function () { down.disabled = false; })
+      Promise.resolve(global.TennisExcel.exportDraw(drawExportRows())).then(function () { down.disabled = false; })
         .catch(function (e) { down.disabled = false; global.alert("다운로드 실패: " + e.message); });
     });
     const up = container.querySelector("#draw-up");
@@ -456,21 +456,16 @@
             (groups[dv] = groups[dv] || []).push(r);
           });
           const dates = Object.keys(groups);
-          let total = 0, datesDone = 0;
+          let datesDone = 0;
           dates.forEach(function (d) {
             const built = buildFromRows(groups[d]);
             if (!built.generated.rounds.length) return;
-            datesDone++; total += built.generated.rounds.length;
-            if (d === curDate) {
-              S.setSessionConfig({ mode: built.mode });
-              if (built.hasScore) S.setSessionConfig({ scoring: true });
-              S.setGenerated(built.generated);
-            } else {
-              S.addHistoryRecord({
-                date: d, mode: built.mode, scoring: built.hasScore,
-                generated: built.generated, names: built.names
-              });
-            }
+            datesDone++;
+            // 같은 날짜의 출퇴근 기록과 자동 병합 (현재 날짜면 진행 세션)
+            S.applyImportedDate(d, {
+              generated: built.generated, names: built.names,
+              mode: built.mode, scoring: built.hasScore
+            });
           });
           up.disabled = false; up.textContent = "⬆️ 대진·결과 업로드";
           if (!datesDone) { global.alert("인식된 대진이 없습니다.\n첫 줄 헤더(날짜·라운드·코트·A팀·B팀…)를 확인하세요."); return; }
