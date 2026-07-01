@@ -102,12 +102,12 @@
       const opts = memberClubOptions();
       if (opts.length === 1) {
         memberClub = opts[0]; storeClub(opts[0]); S.setActiveClub(opts[0]);
-        applyRoleUI(); renderHeader(); go("draw"); return;
+        applyRoleUI(); renderHeader(); go("attendees"); return;
       }
       // 둘다-회원: 상단 토글 유지를 위해 memberClub은 null로 둠
       memberClub = null;
       const last = urlClubParam() || storedClub();
-      if (last) { rememberClub(last); S.setActiveClub(last); applyRoleUI(); renderHeader(); go("draw"); }
+      if (last) { rememberClub(last); S.setActiveClub(last); applyRoleUI(); renderHeader(); go("attendees"); }
       else { applyRoleUI(); renderHeader(); renderClubPicker(); }
     } finally {
       routingEntry = false;
@@ -424,7 +424,7 @@
         '<button id="pick-sun" class="btn btn-primary btn-lg">일요일 클럽</button>' +
       '</div></div>';
     // 둘다-회원 전용: memberClub은 null로 유지(상단 토글 노출), 마지막 선택만 기억
-    function pick(c) { rememberClub(c); S.setActiveClub(c); applyRoleUI(); renderHeader(); go("draw"); }
+    function pick(c) { rememberClub(c); S.setActiveClub(c); applyRoleUI(); renderHeader(); go("attendees"); }
     contentEl.querySelector("#pick-sat").addEventListener("click", function () { pick("sat"); });
     contentEl.querySelector("#pick-sun").addEventListener("click", function () { pick("sun"); });
   }
