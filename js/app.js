@@ -172,13 +172,15 @@
   function renderTabs() {
     const nav = global.document.getElementById("tabbar");
     if (!nav) return;
-    nav.innerHTML = tabs().map(function (t) {
+    const html = tabs().map(function (t) {
       let badge = "";
       if (t.id === "attendance") badge = '<i class="tab-badge">' + S.presentMembers().length + '</i>';
       if (t.id === "members" && S.pendingMembers().length) badge = '<i class="tab-badge warn">' + S.pendingMembers().length + '</i>';
       return '<button class="tab' + (current === t.id ? " active" : "") + '" data-tab="' + t.id + '">' +
         t.label + badge + '</button>';
     }).join("");
+    if (nav.innerHTML === html) return; // 동일 → 재작성/재바인딩 생략(깜빡임 방지)
+    nav.innerHTML = html;
     nav.querySelectorAll(".tab").forEach(function (b) {
       b.addEventListener("click", function () { go(b.getAttribute("data-tab")); });
     });
@@ -199,27 +201,34 @@
       const m = S.getMember(memberAuthId);
       if (m) who = m.name;
     }
-    titleEl.textContent = who + " · " + st.session.date;
+    const text = who + " · " + st.session.date;
+    if (titleEl.textContent !== text) titleEl.textContent = text;
   }
 
   // 클럽 선택 바
   function renderClubBar() {
     const bar = global.document.getElementById("club-bar");
     if (!bar) return;
-    if (memberGated()) { bar.style.display = "none"; bar.innerHTML = ""; return; }
-    const clubs = allowedClubs();
-    if (clubs.length < 2) {
-      bar.style.display = "";
-      bar.innerHTML = '<div class="club-single">' + CLUB_LABEL[clubs[0]] + ' 클럽</div>';
+    if (memberGated()) {
+      if (bar.style.display !== "none") bar.style.display = "none";
+      if (bar.innerHTML !== "") bar.innerHTML = "";
       return;
     }
-    bar.style.display = "";
-    const active = S.getActiveClub();
-    bar.innerHTML = '<div class="club-seg">' + clubs.map(function (c) {
-      return '<button data-club="' + c + '" class="' + (active === c ? "active" : "") + '">' +
-        CLUB_LABEL[c] + ' 클럽</button>';
-    }).join("") + '</div>';
-    bar.querySelectorAll("button").forEach(function (b) {
+    const clubs = allowedClubs();
+    let html;
+    if (clubs.length < 2) {
+      html = '<div class="club-single">' + CLUB_LABEL[clubs[0]] + ' 클럽</div>';
+    } else {
+      const active = S.getActiveClub();
+      html = '<div class="club-seg">' + clubs.map(function (c) {
+        return '<button data-club="' + c + '" class="' + (active === c ? "active" : "") + '">' +
+          CLUB_LABEL[c] + ' 클럽</button>';
+      }).join("") + '</div>';
+    }
+    if (bar.style.display !== "") bar.style.display = "";
+    if (bar.innerHTML === html) return; // 동일 → 재작성/재바인딩 생략(깜빡임 방지)
+    bar.innerHTML = html;
+    bar.querySelectorAll(".club-seg button").forEach(function (b) {
       b.addEventListener("click", function () {
         const c = b.getAttribute("data-club");
         if (!adminRole) rememberClub(c); // 둘다-회원: 다음 입장 때 이 클럽으로
@@ -249,6 +258,15 @@
     if (!adminRole && Sync.getMode() === "cloud" && !current) { routeMemberEntry(); return; }
     renderTabs();
     renderContent();
+  }
+
+  // 같은 틱에 연속으로 들어오는 갱신을 1회 렌더로 합쳐 깜빡임을 줄인다.
+  // (rAF는 백그라운드 탭에서 멈추므로 마이크로태스크 사용 — 숨은 탭에서도 즉시 반영)
+  let refreshQueued = false;
+  function requestRefresh() {
+    if (refreshQueued) return;
+    refreshQueued = true;
+    global.Promise.resolve().then(function () { refreshQueued = false; refreshView(); });
   }
 
   function renderModeLabel() {
@@ -287,8 +305,8 @@
   function init() {
     contentEl = global.document.getElementById("content");
 
-    S.subscribe(refreshView);
-    UI.onRemoteUpdate = refreshView;
+    S.subscribe(requestRefresh);
+    UI.onRemoteUpdate = requestRefresh;
 
     bindHeader();
     UI.go = go;

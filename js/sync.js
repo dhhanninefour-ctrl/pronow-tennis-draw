@@ -77,9 +77,13 @@
   // 강제 클라우드 push (관리자 확정 후 최초 생성/저장에도 사용)
   function pushNow() { return guardedPush(); }
 
+  let lastAppliedTs = null;
   function applyRemote(row) {
     if (!row || !row.state) return;
     if (row.state._writer === clientId) return;
+    // 같은 내용의 중복/재전달 브로드캐스트는 무시 → 불필요한 전체 재렌더(깜빡임) 방지
+    if (row.state._ts && row.state._ts === lastAppliedTs) return;
+    lastAppliedTs = row.state._ts || null;
     // 원격 적용은 되쓰지 않음(replaceFromRemote) → 핑퐁 루프 방지
     S.replaceFromRemote(row.state);
     Storage.save(roomCode, row.state);
