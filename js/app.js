@@ -17,6 +17,7 @@
   let memberAuthId = null;
   let memberClub = null; // 회원이 고정된 클럽 ('sat'|'sun') — null이면 미정
   let awaitingClubPick = false; // 클럽 선택 화면 표시 중(둘다-회원)
+  let routingEntry = false;     // routeMemberEntry 재진입 방지(순환 렌더 차단)
   const MEMBER_KEY = "tennisDraw:member";
   const MEMBER_CLUB_KEY = "tennisDraw:club";
   const CLUB_LABEL = { sat: "토요일", sun: "일요일", both: "토·일" };
@@ -93,17 +94,24 @@
   }
 
   // 로그인 직후 클럽 라우팅: 단일 클럽이면 바로 입장, 둘다면 선택 화면(또는 마지막 클럽)
+  // 주의: 아래에서 S.setActiveClub → notify → refreshView 로 재진입하므로 가드로 순환 방지
   function routeMemberEntry() {
-    const opts = memberClubOptions();
-    if (opts.length === 1) {
-      memberClub = opts[0]; storeClub(opts[0]); S.setActiveClub(opts[0]);
-      applyRoleUI(); renderHeader(); go("draw"); return;
+    if (routingEntry) return;
+    routingEntry = true;
+    try {
+      const opts = memberClubOptions();
+      if (opts.length === 1) {
+        memberClub = opts[0]; storeClub(opts[0]); S.setActiveClub(opts[0]);
+        applyRoleUI(); renderHeader(); go("draw"); return;
+      }
+      // 둘다-회원: 상단 토글 유지를 위해 memberClub은 null로 둠
+      memberClub = null;
+      const last = urlClubParam() || storedClub();
+      if (last) { rememberClub(last); S.setActiveClub(last); applyRoleUI(); renderHeader(); go("draw"); }
+      else { applyRoleUI(); renderHeader(); renderClubPicker(); }
+    } finally {
+      routingEntry = false;
     }
-    // 둘다-회원: 상단 토글 유지를 위해 memberClub은 null로 둠
-    memberClub = null;
-    const last = urlClubParam() || storedClub();
-    if (last) { rememberClub(last); S.setActiveClub(last); applyRoleUI(); renderHeader(); go("draw"); }
-    else { applyRoleUI(); renderHeader(); renderClubPicker(); }
   }
 
   // NTRP 등급 안내 (공용) — 가입/회원 화면에서 펼쳐보기
@@ -234,6 +242,8 @@
     renderHeader();
     renderClubBar();
     if (memberGated()) { renderAccountGate(); return; }
+    // 라우팅 진행 중 재진입 알림은 무시(순환 방지)
+    if (routingEntry) return;
     // 로그인 상태인데 아직 클럽 진입 전(부팅 시 상태가 늦게 로드된 경우) → 라우팅
     if (!adminRole && Sync.getMode() === "cloud" && !current) { routeMemberEntry(); return; }
     renderTabs();
