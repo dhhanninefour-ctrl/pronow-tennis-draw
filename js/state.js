@@ -55,6 +55,10 @@
   }
   // 오늘보다 과거 날짜인지 (지난 날짜는 대진 생성 불가)
   function isPastDate(date) { return !!date && String(date) < todayStr(); }
+  // 오늘보다 미래 날짜인지 (아직 안 온 날짜는 인원 미확정 → 대진 생성 불가)
+  function isFutureDate(date) { return !!date && String(date) > todayStr(); }
+  // 대진 생성 차단 사유: null(가능) | "past" | "future"
+  function genBlockReason(date) { return isPastDate(date) ? "past" : (isFutureDate(date) ? "future" : null); }
 
   function defaultState() {
     return {
@@ -511,6 +515,8 @@
     fmtDuration: fmtDuration,
     roundTime: roundTime,
     isPastDate: isPastDate,
+    isFutureDate: isFutureDate,
+    genBlockReason: genBlockReason,
     addMember: addMember,
     requestSignup: requestSignup,
     setMemberClub: setMemberClub,
