@@ -263,6 +263,7 @@ html, body {
 .draw-date-row.date-range { flex-wrap: wrap; }
 .date-range .range-in { flex: 1 1 130px; min-width: 120px; padding: 7px 9px; font-size: 13px; }
 .date-range .range-sep { font-weight: 800; color: var(--muted); }
+.draw-query-btn { flex: 0 0 auto; white-space: nowrap; }
 
 /* 대진·기록 합친 화면: 기록 섹션 구분선 */
 .sec-hist { border-top: 8px solid var(--surface); margin-top: 4px; }

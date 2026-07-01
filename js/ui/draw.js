@@ -10,6 +10,7 @@
 
   let viewDate = null;   // 보고 있는 날짜(null=현재 대진 기본)
   let rangeFrom = "", rangeTo = ""; // 대진 날짜 기간 검색(빈 값=전체)
+  let queried = false;   // 🔍 조회를 눌러 대진을 표시했는지 (기본은 미표시)
   let curNames = null;   // 지난 기록을 볼 때의 이름맵(null=현재 회원으로 해석)
   let editMode = false;  // 대진 수기 수정 모드(탭-스왑)
   let selectedLoc = null; // 첫 번째로 고른 선수 위치
@@ -85,7 +86,8 @@
       }
     });
     const sg = st.session.generated;
-    if (sg && sg.rounds && sg.rounds.length) {
+    // 아직 다가오지 않은(미래) 날짜의 대진은 참석자 미확정 상태이므로 조회에서 제외
+    if (sg && sg.rounds && sg.rounds.length && !S.isFutureDate(st.session.date)) {
       map[st.session.date] = { date: st.session.date, mode: st.session.mode, generated: sg, names: sg.names || null, editable: true };
     }
     return Object.keys(map).map(function (k) { return map[k]; })
@@ -131,6 +133,7 @@
 
     S.setSessionConfig({ seed: seed });
     S.setGenerated(result);
+    queried = true; // 생성 직후 바로 표시
     // 회원(권한자)이 생성해도 클라우드에 반영
     if (global.TennisSync && global.TennisSync.getMode && global.TennisSync.getMode() === "cloud") {
       global.TennisSync.memberPush();
@@ -140,22 +143,27 @@
 
   function render(container) {
     const st = S.get();
-    const sel = selectedDraw();
+    const sel = queried ? selectedDraw() : null; // 조회 전에는 자동 표시 안 함
     curNames = sel ? (sel.names || null) : null; // 업로드/지난 기록은 스냅샷 이름맵, 자동생성은 회원으로 해석
 
     if (!sel) {
       curNames = null;
-      const hasAny = availableDraws().length > 0; // 대진은 있으나 기간에 안 걸린 경우
-      const emptyMsg = hasAny
-        ? '선택한 기간에 대진이 없습니다. 기간을 바꾸거나 <b>전체</b>를 누르세요.'
-        : (UI.readonly
-            ? '아직 대진이 없습니다. 관리자가 대진을 만들면 실시간으로 표시됩니다.'
-            : '아직 대진이 없습니다. <b>출석</b> 탭에서 인원을 체크하고 “대진 생성”을 누르거나, 위 <b>대진·결과 업로드</b>로 직접 입력하세요.');
+      const anyDraw = availableDraws().length > 0;
+      let emptyMsg;
+      if (!queried) {
+        emptyMsg = '🔍 날짜(또는 기간)를 고른 뒤 <b>조회</b>를 누르면 대진이 표시됩니다.';
+      } else if (anyDraw && drawsInRange().length === 0) {
+        emptyMsg = '선택한 기간에 대진이 없습니다. 기간을 바꾸거나 <b>전체</b>로 다시 조회하세요.';
+      } else {
+        emptyMsg = UI.readonly
+          ? '조회된 대진이 없습니다. 참석자가 확정되어 대진이 만들어지면 조회할 수 있어요.'
+          : '조회된 대진이 없습니다. <b>출석</b> 탭에서 인원을 체크하고 “대진 생성”을 누르거나, 위 <b>대진·결과 업로드</b>로 직접 입력하세요.';
+      }
       container.innerHTML =
         '<div class="screen"><div class="screen-head"><h2>대진</h2></div>' +
         dateBar() +
         drawTools() +
-        (hasAny ? '' : '<p class="empty">' + emptyMsg + '</p>') +
+        '<p class="empty">' + emptyMsg + '</p>' +
         '</div>';
       bind(container);
       return;
@@ -266,8 +274,15 @@
   function dateBar() {
     const all = availableDraws();
     const fallback = S.get().session.date || "";
+    const queryBtn = '<button type="button" id="draw-query" class="btn btn-primary btn-sm draw-query-btn">🔍 조회</button>';
     if (!all.length) {
-      return '<div class="draw-date-row"><label>📅 날짜</label><span class="muted small">' + esc(fallback) + '</span></div>';
+      // 조회할 대진이 없어도 기간 입력 + 조회 버튼은 제공 (조회 시 "없음" 안내)
+      return '<div class="draw-date-row date-range"><label>📅 기간</label>' +
+        '<input type="date" class="date-in range-in" id="range-from" value="' + esc(rangeFrom) + '" title="시작일" />' +
+        '<span class="range-sep">~</span>' +
+        '<input type="date" class="date-in range-in" id="range-to" value="' + esc(rangeTo) + '" title="종료일" />' +
+        ((rangeFrom || rangeTo) ? '<button type="button" id="range-clear" class="btn-tiny">전체</button>' : '') +
+        queryBtn + '</div>';
     }
     const list = drawsInRange();
     const sel = selectedDraw();
@@ -278,7 +293,7 @@
       '<span class="range-sep">~</span>' +
       '<input type="date" class="date-in range-in" id="range-to" value="' + esc(rangeTo) + '" title="종료일" />' +
       ((rangeFrom || rangeTo) ? '<button type="button" id="range-clear" class="btn-tiny">전체</button>' : '') +
-      '</div>';
+      queryBtn + '</div>';
     // 날짜 선택 드롭다운(기간 내) + 현재 대진 날짜 수정
     if (list.length) {
       html += '<div class="draw-date-row"><label>날짜</label>' +
@@ -554,7 +569,7 @@
           });
           up.disabled = false; up.textContent = "⬆️ 대진·결과 업로드";
           if (!datesDone) { global.alert("인식된 대진이 없습니다.\n첫 줄 헤더(날짜·라운드·코트·A팀·B팀…)를 확인하세요."); return; }
-          viewDate = null; // 업로드 후 최신/현재로
+          viewDate = null; queried = true; // 업로드 후 최신/현재로 바로 표시
           global.alert(datesDone + "개 날짜의 대진·결과를 불러왔습니다.");
           render(container);
         }).catch(function (e) { up.disabled = false; up.textContent = "⬆️ 대진·결과 업로드"; global.alert("업로드 실패: " + e.message); });
@@ -580,6 +595,9 @@
 
   function bind(container) {
     bindDrawTools(container);
+    // 🔍 조회 — 선택한 날짜/기간의 대진을 표시 (기본은 미표시)
+    const qBtn = container.querySelector("#draw-query");
+    if (qBtn) qBtn.addEventListener("click", function () { queried = true; render(container); });
     const vd = container.querySelector("#view-date");
     if (vd) vd.addEventListener("change", function () { viewDate = vd.value; render(container); });
     // 기간(날짜 범위) 검색
