@@ -16,6 +16,7 @@
   let contentEl = null;
   let memberAuthId = null;
   let memberClub = null; // 회원이 고정된 클럽 ('sat'|'sun') — null이면 미정
+  let awaitingClubPick = false; // 클럽 선택 화면 표시 중(둘다-회원)
   const MEMBER_KEY = "tennisDraw:member";
   const MEMBER_CLUB_KEY = "tennisDraw:club";
   const CLUB_LABEL = { sat: "토요일", sun: "일요일", both: "토·일" };
@@ -29,6 +30,8 @@
     catch (e) { return null; }
   }
   function storeClub(c) { try { global.localStorage.setItem(MEMBER_CLUB_KEY, c); } catch (e) {} memberClub = c; }
+  // 둘다-회원의 '마지막으로 본 클럽'만 기억 (memberClub은 건드리지 않아 상단 토글 유지)
+  function rememberClub(c) { try { global.localStorage.setItem(MEMBER_CLUB_KEY, c); } catch (e) {} }
   function loggedInMember() { return memberAuthId ? S.getMember(memberAuthId) : null; }
 
   // 현재 역할이 접근 가능한 클럽 목록
@@ -76,9 +79,31 @@
     if (a.role === "rep") return S.repAdmins().some(function (r) { return r.id === a.repId; });
     return false;
   }
-  // 모두 대진/순위를 볼 수 있도록 게이트 사용 안 함 (로그인은 선택)
+  // 회원(클라우드)은 로그인 후에만 클럽 페이지 진입 (로그인 화면이 첫 관문)
   function memberGated() {
-    return false;
+    return !adminRole && Sync.getMode() === "cloud" && !memberLoggedIn();
+  }
+
+  // 로그인된 회원이 접근 가능한 클럽 목록 (단일: [클럽], 둘다: [sat,sun])
+  function memberClubOptions() {
+    const m = loggedInMember();
+    if (m && (m.club === "sat" || m.club === "sun")) return [m.club];
+    if (m && m.club === "both") return ["sat", "sun"];
+    return ["sat", "sun"];
+  }
+
+  // 로그인 직후 클럽 라우팅: 단일 클럽이면 바로 입장, 둘다면 선택 화면(또는 마지막 클럽)
+  function routeMemberEntry() {
+    const opts = memberClubOptions();
+    if (opts.length === 1) {
+      memberClub = opts[0]; storeClub(opts[0]); S.setActiveClub(opts[0]);
+      applyRoleUI(); renderHeader(); go("draw"); return;
+    }
+    // 둘다-회원: 상단 토글 유지를 위해 memberClub은 null로 둠
+    memberClub = null;
+    const last = urlClubParam() || storedClub();
+    if (last) { rememberClub(last); S.setActiveClub(last); applyRoleUI(); renderHeader(); go("draw"); }
+    else { applyRoleUI(); renderHeader(); renderClubPicker(); }
   }
 
   // NTRP 등급 안내 (공용) — 가입/회원 화면에서 펼쳐보기
@@ -127,6 +152,7 @@
   }
 
   function go(tab) {
+    awaitingClubPick = false; // 실제 탭 진입 → 선택 화면 종료
     if (!tabs().some(function (t) { return t.id === tab; })) tab = tabs()[0].id;
     current = tab;
     renderTabs();
@@ -185,12 +211,18 @@
         CLUB_LABEL[c] + ' 클럽</button>';
     }).join("") + '</div>';
     bar.querySelectorAll("button").forEach(function (b) {
-      b.addEventListener("click", function () { S.setActiveClub(b.getAttribute("data-club")); });
+      b.addEventListener("click", function () {
+        const c = b.getAttribute("data-club");
+        if (!adminRole) rememberClub(c); // 둘다-회원: 다음 입장 때 이 클럽으로
+        S.setActiveClub(c);
+      });
     });
   }
 
   // 상태/원격 변경 시 화면 갱신 (게이트면 게이트 렌더)
   function refreshView() {
+    // 클럽 선택 화면 표시 중이면 원격 갱신이 덮어쓰지 않도록 유지
+    if (awaitingClubPick) { renderHeader(); return; }
     // 활성 클럽이 권한 밖이면 보정
     if (!memberGated()) {
       const clubs = allowedClubs();
@@ -202,6 +234,8 @@
     renderHeader();
     renderClubBar();
     if (memberGated()) { renderAccountGate(); return; }
+    // 로그인 상태인데 아직 클럽 진입 전(부팅 시 상태가 늦게 로드된 경우) → 라우팅
+    if (!adminRole && Sync.getMode() === "cloud" && !current) { routeMemberEntry(); return; }
     renderTabs();
     renderContent();
   }
@@ -262,22 +296,12 @@
       applyRoleUI();
       renderModeLabel();
       renderHeader();
-      if (!adminRole && Sync.getMode() === "cloud") {
-        loadMemberAuth(); // 로그인 상태 복원(있으면)
-        memberClub = urlClubParam() || storedClub();
-        if (!memberClub) {
-          const m = loggedInMember();
-          if (m && (m.club === "sat" || m.club === "sun")) memberClub = m.club;
-        }
-        if (memberClub) storeClub(memberClub);
-        if (memberClub) S.setActiveClub(memberClub);
-      }
-      renderHeader();
-      // 회원인데 클럽 미정(익명·미선택) → 클럽 선택 화면
-      const m = loggedInMember();
-      const needPick = !adminRole && Sync.getMode() === "cloud" && !memberClub && !(m && m.club === "both");
-      if (needPick) { applyRoleUI(); renderClubPicker(); }
-      else { go(adminRole ? "members" : "draw"); }
+      if (adminRole) { go("members"); return; }
+      if (Sync.getMode() !== "cloud") { go("draw"); return; }
+      // 회원 · 클라우드: 로그인 필수
+      loadMemberAuth(); // 로그인 상태 복원(있으면)
+      if (!memberLoggedIn()) { applyRoleUI(); renderHeader(); renderAccountGate(); return; }
+      routeMemberEntry();
     });
   }
 
@@ -361,8 +385,8 @@
     contentEl.innerHTML =
       '<div class="screen gate"><div class="gate-card">' +
         '<div class="gate-emoji">🎾</div>' +
-        '<h2>회원 로그인</h2>' +
-        '<p class="muted">회원 페이지를 보려면 로그인하세요.<br>처음이면 회원가입 후 관리자 승인을 받으세요.</p>' +
+        '<h2>PRONOW 테니스</h2>' +
+        '<p class="muted">로그인하면 소속 클럽 페이지로 들어갑니다.<br>토·일 둘 다 가입한 회원은 로그인 후 클럽을 선택해요.<br>처음이면 회원가입 후 관리자 승인을 받으세요.</p>' +
         '<button id="gate-login" class="btn btn-primary btn-lg">로그인</button>' +
         '<button id="gate-signup" class="btn btn-ghost">회원가입</button>' +
       '</div></div>';
@@ -374,18 +398,22 @@
 
   // ── 클럽 선택 화면 (회원, 클럽 미정 시) ───────────────────────────────
   function renderClubPicker() {
+    awaitingClubPick = true;
     const nav = global.document.getElementById("tabbar"); if (nav) nav.innerHTML = "";
     const bar = global.document.getElementById("club-bar"); if (bar) { bar.innerHTML = ""; bar.style.display = "none"; }
     if (!contentEl) return;
+    const nm = loggedInMember();
+    const hi = nm && nm.name ? esc(nm.name) + "님, " : "";
     contentEl.innerHTML =
       '<div class="screen gate"><div class="gate-card">' +
         '<div class="gate-emoji">🎾</div>' +
-        '<h2>어느 클럽이세요?</h2>' +
-        '<p class="muted">소속 클럽을 선택하면 그 클럽 내용만 표시됩니다.</p>' +
+        '<h2>어느 클럽으로 들어갈까요?</h2>' +
+        '<p class="muted">' + hi + '들어갈 클럽을 선택하세요.<br>입장 후 상단 토글로 언제든 바꿀 수 있어요.</p>' +
         '<button id="pick-sat" class="btn btn-primary btn-lg">토요일 클럽</button>' +
         '<button id="pick-sun" class="btn btn-primary btn-lg">일요일 클럽</button>' +
       '</div></div>';
-    function pick(c) { storeClub(c); S.setActiveClub(c); applyRoleUI(); renderHeader(); go("draw"); }
+    // 둘다-회원 전용: memberClub은 null로 유지(상단 토글 노출), 마지막 선택만 기억
+    function pick(c) { rememberClub(c); S.setActiveClub(c); applyRoleUI(); renderHeader(); go("draw"); }
     contentEl.querySelector("#pick-sat").addEventListener("click", function () { pick("sat"); });
     contentEl.querySelector("#pick-sun").addEventListener("click", function () { pick("sun"); });
   }
@@ -458,9 +486,8 @@
       const res = S.memberLogin(root.querySelector("#acc-id").value, root.querySelector("#acc-pw").value);
       if (res.ok) {
         setMemberAuth(res.member.id);
-        S.setActiveClub(allowedClubs()[0]);
         closeModal();
-        applyRoleUI(); renderHeader(); go("draw");
+        routeMemberEntry(); // 단일→바로 입장 / 둘다→클럽 선택
       } else {
         warn.hidden = false;
         warn.textContent = res.reason === "pending"
@@ -502,7 +529,8 @@
     if (toLogin) toLogin.addEventListener("click", function () { openAccountModal("login"); });
     const logoutBtn = root.querySelector("#acc-logout");
     if (logoutBtn) logoutBtn.addEventListener("click", function () {
-      clearMemberAuth(); closeModal(); applyRoleUI(); renderHeader(); go("draw");
+      clearMemberAuth(); memberClub = null; closeModal();
+      applyRoleUI(); renderHeader(); renderAccountGate(); // 로그인 화면(첫 관문)으로
     });
 
     const chpwBtn = root.querySelector("#acc-chpw");
