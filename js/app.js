@@ -144,7 +144,8 @@
       const list = [
         { id: "members", label: "회원" },
         { id: "attendance", label: "출석" },
-        { id: "draw", label: "대진" }
+        { id: "draw", label: "대진" },
+        { id: "history", label: "기록" }
       ];
       if (S.get().session.scoring) list.push({ id: "ranking", label: "순위" });
       return list;

@@ -412,6 +412,7 @@
       id: uid(), date: s.date, mode: s.mode, courts: s.courts, rounds: s.rounds,
       scoring: s.scoring, generated: clone(s.generated),
       names: namesForGenerated(s.generated), times: clone(s.times),
+      attendance: clone(s.attendance || {}),
       startTime: s.startTime, endTime: s.endTime, savedAt: todayStr()
     };
     state.history.unshift(record);
