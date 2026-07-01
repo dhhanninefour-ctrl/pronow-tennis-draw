@@ -428,11 +428,29 @@
   }
   // 업로드한 한 날짜의 데이터(출석/출퇴근/대진)를 적용:
   //  - 현재 세션 날짜면 진행 세션에, 아니면 날짜별 기록으로 보관
+  // 업로드된 대진에 포함된 회원(팀+휴식)을 참석자로 자동 도출 (업로드=참석 확정)
+  function attendanceFromGenerated(gen) {
+    const att = {};
+    if (!gen || !gen.rounds) return att;
+    const memberIds = {};
+    (state.members || []).forEach(function (m) { memberIds[m.id] = true; });
+    gen.rounds.forEach(function (rd) {
+      (rd.matches || []).forEach(function (mm) {
+        (mm.teamA || []).concat(mm.teamB || []).forEach(function (id) { if (memberIds[id]) att[id] = true; });
+      });
+      (rd.byes || []).forEach(function (id) { if (memberIds[id]) att[id] = true; });
+    });
+    return att;
+  }
+
   function applyImportedDate(date, p) {
     p = p || {};
+    // 대진에 들어간 회원을 참석자로 자동 체크
+    const derivedAtt = attendanceFromGenerated(p.generated);
     if (date && date === state.session.date) {
       const s = state.session;
       if (p.attendance) Object.keys(p.attendance).forEach(function (id) { s.attendance[id] = true; });
+      Object.keys(derivedAtt).forEach(function (id) { s.attendance[id] = true; });
       if (p.times) { s.times = s.times || {}; Object.assign(s.times, p.times); }
       if (p.mode) s.mode = p.mode;
       if (p.scoring) s.scoring = true;
@@ -450,7 +468,7 @@
       }
       existing.names = Object.assign({}, existing.names || {}, p.names || {});
       existing.times = Object.assign({}, existing.times || {}, p.times || {});
-      existing.attendance = Object.assign({}, existing.attendance || {}, p.attendance || {});
+      existing.attendance = Object.assign({}, existing.attendance || {}, derivedAtt, p.attendance || {});
       commit();
       return "history";
     }
@@ -458,7 +476,8 @@
       : { rounds: [], stats: { gamesPlayed: {}, byeCount: {} }, warnings: [], names: p.names || {} };
     addHistoryRecord({
       date: date, mode: p.mode || "doubles", scoring: !!p.scoring,
-      generated: gen, names: p.names || {}, times: p.times || {}, attendance: p.attendance || {}
+      generated: gen, names: p.names || {}, times: p.times || {},
+      attendance: Object.assign({}, derivedAtt, p.attendance || {})
     });
     return "history";
   }
