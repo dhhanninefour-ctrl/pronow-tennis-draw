@@ -27,3 +27,9 @@ supabase/.temp/
 *.PNG
 *.jpg
 *.jpeg
+
+# PWA app icons (exception to *.png rule above)
+!icon-192.png
+!icon-512.png
+!icon-maskable-512.png
+!apple-touch-icon.png

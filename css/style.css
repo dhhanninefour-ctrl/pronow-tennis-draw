@@ -69,7 +69,8 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px 10px;
+  /* 상단: iOS 노치/상태바 안전영역만큼 자동 확보. 좌우: 가로모드 노치 대응 */
+  padding: calc(14px + env(safe-area-inset-top, 0)) max(18px, env(safe-area-inset-right, 0)) 10px max(18px, env(safe-area-inset-left, 0));
 }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand-mark {
@@ -153,14 +154,18 @@ html, body {
 .rep-id { margin-left: auto; }
 
 /* ── Content ─────────────────────────────────────────────────────────── */
-.content { flex: 1; padding: 8px 18px 120px; }
+.content {
+  flex: 1;
+  /* 좌우: 가로모드 노치 안전영역. 하단: 홈 인디케이터 + 고정 CTA 여유 */
+  padding: 8px max(18px, env(safe-area-inset-right, 0)) calc(120px + env(safe-area-inset-bottom, 0)) max(18px, env(safe-area-inset-left, 0));
+}
 .screen { animation: fade .2s ease; }
 @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
-.screen-head { margin: 14px 2px 18px; }
+.screen-head { margin: 12px 2px 16px; }
 .screen-head h2 {
   margin: 0;
-  font-size: 30px;
+  font-size: 27px;
   font-weight: 800;
   letter-spacing: -0.03em;
 }
@@ -854,10 +859,16 @@ html, body {
 }
 
 /* ── Footer ──────────────────────────────────────────────────────────── */
-.appfoot { padding: 18px; text-align: center; }
+.appfoot { padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0)); text-align: center; }
 .appfoot b { color: var(--ink); font-weight: 800; letter-spacing: 0.04em; }
 
+/* 작은 폰(≤380px): 여백을 조금 좁혀 화면을 더 넓게 씀 */
 @media (max-width: 380px) {
-  .screen-head h2 { font-size: 26px; }
+  .content { padding-left: max(14px, env(safe-area-inset-left, 0)); padding-right: max(14px, env(safe-area-inset-right, 0)); }
+  .appbar-inner { padding-left: max(14px, env(safe-area-inset-left, 0)); padding-right: max(14px, env(safe-area-inset-right, 0)); }
+  .tabbar { padding-left: 8px; padding-right: 8px; }
+  .club-bar { padding-left: 8px; padding-right: 8px; }
+  .screen-head h2 { font-size: 24px; }
+  .screen-head { margin: 10px 2px 14px; }
   .team { font-size: 16px; }
 }
